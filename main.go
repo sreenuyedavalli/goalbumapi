@@ -49,6 +49,7 @@ type album struct {
 
 // getAlbums responds with the list of all albums as JSON.
 func getAlbums(c *gin.Context) {
+	c.Header("Content-Type", "application/json")
 	c.IndentedJSON(http.StatusOK, albums)
 }
 
