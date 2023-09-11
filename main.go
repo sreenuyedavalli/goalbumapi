@@ -3,6 +3,7 @@ package main
 import (
 	"net/http"
 
+	"github.com/gin-gonic/contrib/static"
 	"github.com/gin-gonic/gin"
 )
 
@@ -60,8 +61,21 @@ var albums = []album{
 
 func main() {
 	router := gin.Default()
+	// Serve frontend static files
+	router.Use(static.Serve("/", static.LocalFile("./views/js", true)))
+
+	// Setup route group for the API
+	api := router.Group("/api")
+	{
+		api.GET("/", func(c *gin.Context) {
+			c.JSON(http.StatusOK, gin.H{
+				"message": "pong",
+			})
+		})
+	}
+
 	router.GET("/albums", getAlbums)
 	router.GET("/albums/:id", getAlbumByID)
 	router.POST("/albums", postAlbums)
-	router.Run("localhost:8080")
+	router.Run("localhost:3000")
 }
