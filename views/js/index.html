@@ -172,6 +172,21 @@
             margin-right: 8px;
             color: #666;
         }
+        .year-group {
+            margin-bottom: 30px;
+        }
+        .year-header {
+            background: #f1f1f1;
+            padding: 10px 15px;
+            margin-bottom: 15px;
+            border-radius: 4px;
+            font-weight: 500;
+            color: #333;
+        }
+        .year-header i {
+            margin-right: 8px;
+            color: #666;
+        }
     </style>
 </head>
 <body>
@@ -193,6 +208,7 @@
             <select id="sortSelect" onchange="changeSort(this.value)">
                 <option value="none">Default Order</option>
                 <option value="label">Record Label</option>
+                <option value="year">Release Year</option>
             </select>
         </div>
 
@@ -331,6 +347,42 @@
                             
                             labelGroup.appendChild(albumsGrid);
                             albumsDiv.appendChild(labelGroup);
+                        });
+                    } else if (sortBy === 'year') {
+                        // Group albums by year
+                        const yearGroups = {};
+                        data.albums.forEach(album => {
+                            if (!yearGroups[album.year]) {
+                                yearGroups[album.year] = [];
+                            }
+                            yearGroups[album.year].push(album);
+                        });
+
+                        // Sort years in descending order
+                        const sortedYears = Object.keys(yearGroups).sort((a, b) => {
+                            return parseInt(b) - parseInt(a);
+                        });
+
+                        // Create year groups
+                        sortedYears.forEach(year => {
+                            const yearGroup = document.createElement('div');
+                            yearGroup.className = 'year-group';
+                            
+                            const yearHeader = document.createElement('div');
+                            yearHeader.className = 'year-header';
+                            yearHeader.innerHTML = `<i class="fas fa-calendar"></i>${year}`;
+                            yearGroup.appendChild(yearHeader);
+
+                            const albumsGrid = document.createElement('div');
+                            albumsGrid.className = 'album-grid';
+                            
+                            yearGroups[year].forEach(album => {
+                                const albumCard = createAlbumCard(album);
+                                albumsGrid.appendChild(albumCard);
+                            });
+                            
+                            yearGroup.appendChild(albumsGrid);
+                            albumsDiv.appendChild(yearGroup);
                         });
                     } else {
                         // Regular grid view

@@ -269,10 +269,18 @@ func getAlbums(c *gin.Context) {
 	}
 
 	// Sort albums if requested
-	if sortBy == "label" {
+	switch sortBy {
+	case "label":
 		// Sort albums by label
 		sort.Slice(discogsAlbums, func(i, j int) bool {
 			return discogsAlbums[i].Label < discogsAlbums[j].Label
+		})
+	case "year":
+		// Sort albums by year (descending)
+		sort.Slice(discogsAlbums, func(i, j int) bool {
+			yearI, _ := strconv.Atoi(discogsAlbums[i].Year)
+			yearJ, _ := strconv.Atoi(discogsAlbums[j].Year)
+			return yearI > yearJ // Descending order
 		})
 	}
 
