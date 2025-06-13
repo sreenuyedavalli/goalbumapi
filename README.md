@@ -10,14 +10,18 @@ A web application for managing and displaying your Discogs vinyl collection with
 - Pagination support for large collections
 - Caching for improved performance
 - Modern, responsive UI
+- Multi-architecture Docker support (amd64, arm64)
 
 ## Prerequisites
 
 - Go 1.16 or higher
 - A Discogs API token
 - Git
+- Docker and Docker Compose (optional)
 
 ## Installation
+
+### Option 1: Local Installation
 
 1. Clone the repository:
 ```bash
@@ -38,7 +42,22 @@ go mod download
 export DISCOGS_TOKEN="your-token-here"
 ```
 
+### Option 2: Docker Installation
+
+1. Clone the repository:
+```bash
+git clone <repository-url>
+cd goalbumapi
+```
+
+2. Set up your Discogs API token:
+```bash
+export DISCOGS_TOKEN="your-token-here"
+```
+
 ## Building and Running
+
+### Option 1: Local Build
 
 1. Build the application:
 ```bash
@@ -48,6 +67,25 @@ go build
 2. Run the application:
 ```bash
 ./goalbumapi
+```
+
+### Option 2: Docker Build
+
+1. Build and run using Docker Compose:
+```bash
+docker-compose up --build
+```
+
+Or build for specific architectures:
+```bash
+# Build for amd64
+docker buildx build --platform linux/amd64 -t albumapp:latest .
+
+# Build for arm64
+docker buildx build --platform linux/arm64 -t albumapp:latest .
+
+# Build for both architectures
+docker buildx build --platform linux/amd64,linux/arm64 -t albumapp:latest .
 ```
 
 The application will start on `http://localhost:3000`
@@ -96,6 +134,8 @@ The application will start on `http://localhost:3000`
 goalbumapi/
 ├── main.go           # Main application code
 ├── main_test.go      # Test files
+├── Dockerfile        # Multi-arch Docker build file
+├── docker-compose.yml # Docker Compose configuration
 ├── views/
 │   └── js/
 │       ├── index.html    # Public view

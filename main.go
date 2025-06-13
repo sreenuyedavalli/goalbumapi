@@ -332,5 +332,5 @@ func main() {
 	// Serve admin page
 	router.StaticFile("/admin", "./views/js/admin.html")
 
-	router.Run("localhost:3000")
+	router.Run(":3000")
 }
