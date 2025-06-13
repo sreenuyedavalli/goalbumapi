@@ -70,11 +70,13 @@ The application will start on `http://localhost:3000`
 ## Screenshots
 
 ### Public View
-![Public View](screenshots/public-view.png)
+<img width="1301" alt="Screenshot 2025-06-12 at 11 34 05 PM" src="https://github.com/user-attachments/assets/adbfa066-880f-46d3-849a-47ffb6ca0659" />
+
 *The main collection view showing albums sorted by default order*
 
 ### Admin View
-![Admin View](screenshots/admin-view.png)
+<img width="1342" alt="Screenshot 2025-06-12 at 11 35 21 PM" src="https://github.com/user-attachments/assets/d1aac976-97f3-4f8a-9b0b-86f3b5d1a974" />
+
 *The admin interface for managing album prices*
 
 ## API Endpoints
