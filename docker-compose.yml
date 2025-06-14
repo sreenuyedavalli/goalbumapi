@@ -10,12 +10,35 @@ services:
     environment:
       - DISCOGS_TOKEN=${DISCOGS_TOKEN}
       - GIN_MODE=debug
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=${DB_USER:-postgres}
+      - DB_PASSWORD=${DB_PASSWORD:-postgres}
+      - DB_NAME=${DB_NAME:-albumdb}
     volumes:
       - ./views:/app/views
+    depends_on:
+      - postgres
     restart: unless-stopped
+    networks:
+      - album-network
+
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_DB=${DB_NAME}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
     networks:
       - album-network
 
 networks:
   album-network:
-    driver: bridge 
+    driver: bridge
+
+volumes:
+  postgres_data: 

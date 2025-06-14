@@ -5,12 +5,16 @@ A web application for managing and displaying your Discogs vinyl collection with
 ## Features
 
 - View your Discogs collection in a responsive grid layout
-- Sort albums by record label or release year
+- Advanced sorting capabilities:
+  - Sort by title, artist, year, or price
+  - Toggle between ascending and descending order
+  - Maintain sort state across pagination
 - Admin interface for managing album prices
 - Pagination support for large collections
 - Caching for improved performance
 - Modern, responsive UI
 - Multi-architecture Docker support (amd64, arm64)
+- Persistent price storage with PostgreSQL
 
 ## Prerequisites
 
@@ -18,6 +22,7 @@ A web application for managing and displaying your Discogs vinyl collection with
 - A Discogs API token
 - Git
 - Docker and Docker Compose (optional)
+- PostgreSQL (included in Docker setup)
 
 ## Installation
 
@@ -34,12 +39,17 @@ cd goalbumapi
 go mod download
 ```
 
-3. Set up your Discogs API token:
-   - Go to [Discogs Developer Settings](https://www.discogs.com/settings/developers)
-   - Create a new token
-   - Set the token as an environment variable:
+3. Set up your environment variables:
 ```bash
+# Discogs API token
 export DISCOGS_TOKEN="your-token-here"
+
+# Database configuration (if not using Docker)
+export DB_HOST="localhost"
+export DB_PORT="5432"
+export DB_USER="postgres"
+export DB_PASSWORD="your-password"
+export DB_NAME="albumdb"
 ```
 
 ### Option 2: Docker Installation
@@ -50,9 +60,15 @@ git clone <repository-url>
 cd goalbumapi
 ```
 
-2. Set up your Discogs API token:
+2. Set up your environment variables:
 ```bash
+# Discogs API token
 export DISCOGS_TOKEN="your-token-here"
+
+# Optional: Override default database settings
+export DB_USER="your-user"
+export DB_PASSWORD="your-password"
+export DB_NAME="your-database"
 ```
 
 ## Building and Running
@@ -94,28 +110,32 @@ The application will start on `http://localhost:3000`
 
 ### Public View
 - Visit `http://localhost:3000` to view your collection
-- Use the sort dropdown to organize albums by:
-  - Default order
-  - Record label
-  - Release year
+- Use the sort controls to organize albums by:
+  - Title (alphabetical)
+  - Artist (alphabetical)
+  - Year (chronological)
+  - Price (numerical)
+- Toggle between ascending and descending order
 - Navigate through pages using the pagination controls
 
 ### Admin View
 - Visit `http://localhost:3000/admin` to manage album prices
 - Set prices for each album in your collection
-- Prices are saved in memory and persist until server restart
+- Prices are stored in PostgreSQL and persist across restarts
+- Add new albums to your Discogs collection
+- Sort and filter your collection with advanced controls
 
 ## Screenshots
 
 ### Public View
-<img width="1301" alt="Screenshot 2025-06-12 at 11 34 05 PM" src="https://github.com/user-attachments/assets/adbfa066-880f-46d3-849a-47ffb6ca0659" />
+<img width="1301" alt="Screenshot 2025-06-12 at 11 34 05 PM" src="https://github.com/user-attachments/assets/adbfa066-880f-46d3-849a-47ffb6ca0659" />
 
-*The main collection view showing albums sorted by default order*
+*The main collection view showing albums with sorting controls*
 
 ### Admin View
-<img width="1342" alt="Screenshot 2025-06-12 at 11 35 21 PM" src="https://github.com/user-attachments/assets/d1aac976-97f3-4f8a-9b0b-86f3b5d1a974" />
+<img width="1342" alt="Screenshot 2025-06-12 at 11 35 21 PM" src="https://github.com/user-attachments/assets/d1aac976-97f3-4f8a-9b0b-86f3b5d1a974" />
 
-*The admin interface for managing album prices*
+*The admin interface for managing album prices and collection*
 
 ## API Endpoints
 
@@ -123,9 +143,12 @@ The application will start on `http://localhost:3000`
   - Query parameters:
     - `page` (default: 1)
     - `per_page` (default: 12)
-    - `sort_by` (options: none, label, year)
+    - `sort_by` (options: none, title, artist, year, price)
+    - `direction` (options: asc, desc)
 - `PUT /api/albums/:id/price` - Update album price
   - Request body: `{"price": 29.99}`
+- `POST /api/albums` - Create new album in Discogs
+  - Request body: See API documentation for details
 
 ## Development
 

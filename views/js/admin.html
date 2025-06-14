@@ -111,6 +111,82 @@
         <!-- Success Message -->
         <div id="success" class="alert alert-success" style="display: none;"></div>
 
+        <!-- Create Album Form -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">Add New Album to Discogs</h5>
+            </div>
+            <div class="card-body">
+                <form id="createAlbumForm" onsubmit="createAlbum(event)">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="title" class="form-label">Title</label>
+                            <input type="text" class="form-control" id="title" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="artist" class="form-label">Artist</label>
+                            <input type="text" class="form-control" id="artist" required>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label for="year" class="form-label">Year</label>
+                            <input type="number" class="form-control" id="year" required min="1900" max="2024">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="label" class="form-label">Label</label>
+                            <input type="text" class="form-control" id="label" required>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="genres" class="form-label">Genres (comma-separated)</label>
+                            <input type="text" class="form-control" id="genres" placeholder="Rock, Jazz, Blues">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="styles" class="form-label">Styles (comma-separated)</label>
+                            <input type="text" class="form-control" id="styles" placeholder="Progressive, Fusion">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="tracklist" class="form-label">Tracklist (one per line, format: "Position - Title - Duration")</label>
+                            <textarea class="form-control" id="tracklist" rows="3" placeholder="A1 - Track 1 - 3:45&#10;A2 - Track 2 - 4:20"></textarea>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> Add Album
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Sorting Controls -->
+        <div class="row mb-4">
+            <div class="col">
+                <div class="d-flex align-items-center">
+                    <span class="me-2">Sort by:</span>
+                    <div class="btn-group me-2" role="group" aria-label="Sort albums">
+                        <button type="button" class="btn btn-outline-secondary" onclick="sortAlbums('title')">
+                            <i class="fas fa-sort-alpha-down"></i> Title
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary" onclick="sortAlbums('artist')">
+                            <i class="fas fa-user"></i> Artist
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary" onclick="sortAlbums('year')">
+                            <i class="fas fa-calendar"></i> Year
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary" onclick="sortAlbums('price')">
+                            <i class="fas fa-dollar-sign"></i> Price
+                        </button>
+                    </div>
+                    <div class="btn-group" role="group" aria-label="Sort direction">
+                        <button type="button" class="btn btn-outline-secondary" onclick="toggleSortDirection()" id="sortDirectionBtn">
+                            <i class="fas fa-sort-amount-down"></i> Descending
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Albums Grid -->
         <div id="albumsContainer" class="row"></div>
 
@@ -136,12 +212,19 @@
         let currentPage = 1;
         let totalPages = 1;
         const perPage = 12;
+        let currentSort = 'none';
+        let sortDirection = 'desc';
 
-        async function loadAlbums(page = 1) {
+        async function loadAlbums(page = 1, sortBy = null, keepPage = false) {
             showLoading();
             try {
                 console.log(`Loading page ${page}...`);
-                const response = await fetch(`/albums?page=${page}&per_page=${perPage}`);
+                let url = `/albums?page=${page}&per_page=${perPage}`;
+                if (sortBy) {
+                    url += `&sort_by=${sortBy}&direction=${sortDirection}`;
+                    currentSort = sortBy;
+                }
+                const response = await fetch(url);
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
@@ -157,6 +240,9 @@
                 // Update pagination buttons
                 document.getElementById('prevPage').disabled = currentPage === 1;
                 document.getElementById('nextPage').disabled = currentPage === totalPages;
+
+                // Update sort buttons
+                updateSortButtons();
 
                 // Clear and populate albums
                 const albumsDiv = document.getElementById('albumsContainer');
@@ -182,10 +268,56 @@
             }
         }
 
+        function updateSortButtons() {
+            // Remove active class from all sort buttons
+            document.querySelectorAll('.btn-group .btn').forEach(btn => {
+                if (!btn.id) { // Skip the direction button
+                    btn.classList.remove('active');
+                    btn.classList.remove('btn-primary');
+                    btn.classList.add('btn-outline-secondary');
+                }
+            });
+
+            // Add active class to current sort button
+            if (currentSort !== 'none') {
+                const activeButton = document.querySelector(`.btn-group .btn[onclick="sortAlbums('${currentSort}')"]`);
+                if (activeButton) {
+                    activeButton.classList.add('active');
+                    activeButton.classList.add('btn-primary');
+                    activeButton.classList.remove('btn-outline-secondary');
+                }
+            }
+
+            // Update direction button
+            const directionBtn = document.getElementById('sortDirectionBtn');
+            if (directionBtn) {
+                directionBtn.innerHTML = sortDirection === 'asc' 
+                    ? '<i class="fas fa-sort-amount-up"></i> Ascending'
+                    : '<i class="fas fa-sort-amount-down"></i> Descending';
+            }
+        }
+
+        function sortAlbums(sortBy) {
+            // Toggle sort if clicking the same sort button
+            if (sortBy === currentSort) {
+                sortBy = 'none';
+            }
+            // Keep the current page when sorting
+            loadAlbums(currentPage, sortBy, true);
+        }
+
+        function toggleSortDirection() {
+            sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+            if (currentSort !== 'none') {
+                // Keep the current page when changing sort direction
+                loadAlbums(currentPage, currentSort, true);
+            }
+        }
+
         function changePage(delta) {
             const newPage = currentPage + delta;
             if (newPage >= 1 && newPage <= totalPages) {
-                loadAlbums(newPage);
+                loadAlbums(newPage, currentSort, true);
             }
         }
 
@@ -247,6 +379,66 @@
                 showSuccess('Price updated successfully');
             } catch (error) {
                 showError(error.message);
+            }
+        }
+
+        async function createAlbum(event) {
+            event.preventDefault();
+            showLoading();
+
+            try {
+                // Parse tracklist
+                const tracklistText = document.getElementById('tracklist').value;
+                const tracklist = tracklistText.split('\n')
+                    .filter(line => line.trim())
+                    .map(line => {
+                        const [position, title, duration] = line.split('-').map(s => s.trim());
+                        return { position, title, duration };
+                    });
+
+                // Parse genres and styles
+                const genres = document.getElementById('genres').value
+                    .split(',')
+                    .map(g => g.trim())
+                    .filter(g => g);
+                const styles = document.getElementById('styles').value
+                    .split(',')
+                    .map(s => s.trim())
+                    .filter(s => s);
+
+                const albumData = {
+                    title: document.getElementById('title').value,
+                    artist: document.getElementById('artist').value,
+                    year: parseInt(document.getElementById('year').value),
+                    label: document.getElementById('label').value,
+                    genres: genres,
+                    styles: styles,
+                    tracklist: tracklist
+                };
+
+                const response = await fetch('/api/albums', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(albumData)
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || 'Failed to create album');
+                }
+
+                const result = await response.json();
+                showSuccess('Album created successfully!');
+                document.getElementById('createAlbumForm').reset();
+                
+                // Reload albums to show the new one
+                loadAlbums(currentPage);
+            } catch (error) {
+                showError(error.message);
+            } finally {
+                hideLoading();
             }
         }
 
