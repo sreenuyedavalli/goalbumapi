@@ -87,15 +87,39 @@
             margin-right: 5px;
             color: #888;
         }
+        .header-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .logout-btn {
+            background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+            border: none;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 5px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        .logout-btn:hover {
+            background: linear-gradient(135deg, #c82333 0%, #bd2130 100%);
+            transform: translateY(-1px);
+            color: white;
+        }
     </style>
 </head>
 <body>
     <div class="container mt-4">
-        <div class="row mb-4">
-            <div class="col">
+        <!-- Header with Logout -->
+        <div class="header-controls">
+            <div>
                 <h1>Album Price Management</h1>
                 <p class="text-muted">Set prices for your album collection</p>
             </div>
+            <button class="btn logout-btn" onclick="logout()">
+                <i class="fas fa-sign-out-alt"></i> Logout
+            </button>
         </div>
 
         <!-- Loading Indicator -->
@@ -110,54 +134,6 @@
 
         <!-- Success Message -->
         <div id="success" class="alert alert-success" style="display: none;"></div>
-
-        <!-- Create Album Form -->
-        <div class="card mb-4">
-            <div class="card-header">
-                <h5 class="mb-0">Add New Album to Discogs</h5>
-            </div>
-            <div class="card-body">
-                <form id="createAlbumForm" onsubmit="createAlbum(event)">
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label for="title" class="form-label">Title</label>
-                            <input type="text" class="form-control" id="title" required>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label for="artist" class="form-label">Artist</label>
-                            <input type="text" class="form-control" id="artist" required>
-                        </div>
-                    </div>
-                    <div class="row">
-                        <div class="col-md-4 mb-3">
-                            <label for="year" class="form-label">Year</label>
-                            <input type="number" class="form-control" id="year" required min="1900" max="2024">
-                        </div>
-                        <div class="col-md-4 mb-3">
-                            <label for="label" class="form-label">Label</label>
-                            <input type="text" class="form-control" id="label" required>
-                        </div>
-                        <div class="col-md-4 mb-3">
-                            <label for="genres" class="form-label">Genres (comma-separated)</label>
-                            <input type="text" class="form-control" id="genres" placeholder="Rock, Jazz, Blues">
-                        </div>
-                    </div>
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label for="styles" class="form-label">Styles (comma-separated)</label>
-                            <input type="text" class="form-control" id="styles" placeholder="Progressive, Fusion">
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label for="tracklist" class="form-label">Tracklist (one per line, format: "Position - Title - Duration")</label>
-                            <textarea class="form-control" id="tracklist" rows="3" placeholder="A1 - Track 1 - 3:45&#10;A2 - Track 2 - 4:20"></textarea>
-                        </div>
-                    </div>
-                    <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-plus"></i> Add Album
-                    </button>
-                </form>
-            </div>
-        </div>
 
         <!-- Sorting Controls -->
         <div class="row mb-4">
@@ -215,6 +191,55 @@
         let currentSort = 'none';
         let sortDirection = 'desc';
 
+        // Check authentication on page load
+        document.addEventListener('DOMContentLoaded', async () => {
+            await checkAuth();
+        });
+
+        async function checkAuth() {
+            try {
+                const response = await fetch('/api/auth/check');
+                if (!response.ok) {
+                    // Not authenticated, redirect to login
+                    window.location.href = '/login';
+                    return;
+                }
+                const data = await response.json();
+                if (!data.authenticated) {
+                    window.location.href = '/login';
+                    return;
+                }
+                // Authenticated, load albums
+                loadAlbums();
+            } catch (error) {
+                console.error('Auth check failed:', error);
+                window.location.href = '/login';
+            }
+        }
+
+        async function logout() {
+            try {
+                const response = await fetch('/api/auth/logout', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+
+                if (response.ok) {
+                    showSuccess('Logged out successfully. Redirecting...');
+                    setTimeout(() => {
+                        window.location.href = '/';
+                    }, 1000);
+                } else {
+                    showError('Logout failed. Please try again.');
+                }
+            } catch (error) {
+                console.error('Logout error:', error);
+                showError('Logout failed. Please try again.');
+            }
+        }
+
         async function loadAlbums(page = 1, sortBy = null, keepPage = false) {
             showLoading();
             try {
@@ -226,6 +251,11 @@
                 }
                 const response = await fetch(url);
                 if (!response.ok) {
+                    if (response.status === 401) {
+                        // Unauthorized, redirect to login
+                        window.location.href = '/login';
+                        return;
+                    }
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
                 const data = await response.json();
@@ -248,220 +278,143 @@
                 const albumsDiv = document.getElementById('albumsContainer');
                 albumsDiv.innerHTML = '';
                 
-                if (!data.albums || data.albums.length === 0) {
-                    const noAlbums = document.createElement('div');
-                    noAlbums.className = 'col-12 text-center';
-                    noAlbums.innerHTML = '<p>No albums found in your collection.</p>';
-                    albumsDiv.appendChild(noAlbums);
-                } else {
-                    console.log(`Rendering ${data.albums.length} albums`);
-                    data.albums.forEach(album => {
-                        const albumCard = createAlbumCard(album);
-                        albumsDiv.appendChild(albumCard);
-                    });
-                }
+                data.albums.forEach(album => {
+                    const card = createAlbumCard(album);
+                    albumsDiv.appendChild(card);
+                });
             } catch (error) {
                 console.error('Error loading albums:', error);
-                showError(error.message);
+                showError('Failed to load albums. Please try again.');
             } finally {
                 hideLoading();
             }
         }
 
-        function updateSortButtons() {
-            // Remove active class from all sort buttons
-            document.querySelectorAll('.btn-group .btn').forEach(btn => {
-                if (!btn.id) { // Skip the direction button
-                    btn.classList.remove('active');
-                    btn.classList.remove('btn-primary');
-                    btn.classList.add('btn-outline-secondary');
-                }
-            });
+        function createAlbumCard(album) {
+            const col = document.createElement('div');
+            col.className = 'col-md-4 col-lg-3';
+            
+            col.innerHTML = `
+                <div class="card album-card">
+                    <div class="album-cover">
+                        ${album.thumb ? 
+                            `<img src="${album.thumb}" alt="${album.title}">` :
+                            `<div class="placeholder"><i class="fas fa-music"></i></div>`
+                        }
+                    </div>
+                    <div class="album-details">
+                        <h5 class="card-title">${album.title}</h5>
+                        <p class="album-label">
+                            <i class="fas fa-user"></i> ${album.artist}
+                        </p>
+                        <p class="album-label">
+                            <i class="fas fa-calendar"></i> ${album.year}
+                        </p>
+                        <p class="album-label">
+                            <i class="fas fa-tag"></i> ${album.label}
+                        </p>
+                        <div class="d-flex align-items-center mt-3">
+                            <label class="me-2">Price: $</label>
+                            <input type="number" 
+                                   class="form-control form-control-sm price-input" 
+                                   value="${album.price || 0}" 
+                                   step="0.01" 
+                                   min="0"
+                                   onchange="updatePrice('${album.id}', this.value)">
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            return col;
+        }
 
-            // Add active class to current sort button
-            if (currentSort !== 'none') {
-                const activeButton = document.querySelector(`.btn-group .btn[onclick="sortAlbums('${currentSort}')"]`);
-                if (activeButton) {
-                    activeButton.classList.add('active');
-                    activeButton.classList.add('btn-primary');
-                    activeButton.classList.remove('btn-outline-secondary');
-                }
-            }
+        async function updatePrice(albumId, newPrice) {
+            showLoading();
+            try {
+                const response = await fetch(`/api/admin/albums/${albumId}/price`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ price: parseFloat(newPrice) })
+                });
 
-            // Update direction button
-            const directionBtn = document.getElementById('sortDirectionBtn');
-            if (directionBtn) {
-                directionBtn.innerHTML = sortDirection === 'asc' 
-                    ? '<i class="fas fa-sort-amount-up"></i> Ascending'
-                    : '<i class="fas fa-sort-amount-down"></i> Descending';
+                if (!response.ok) {
+                    if (response.status === 401) {
+                        // Unauthorized, redirect to login
+                        window.location.href = '/login';
+                        return;
+                    }
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                showSuccess('Price updated successfully');
+            } catch (error) {
+                console.error('Error updating price:', error);
+                showError('Failed to update price. Please try again.');
+            } finally {
+                hideLoading();
             }
         }
 
         function sortAlbums(sortBy) {
-            // Toggle sort if clicking the same sort button
-            if (sortBy === currentSort) {
-                sortBy = 'none';
+            if (currentSort === sortBy) {
+                toggleSortDirection();
+            } else {
+                currentSort = sortBy;
+                sortDirection = 'desc';
+                updateSortDirectionButton();
             }
-            // Keep the current page when sorting
-            loadAlbums(currentPage, sortBy, true);
+            loadAlbums(currentPage, currentSort, true);
         }
 
         function toggleSortDirection() {
             sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
-            if (currentSort !== 'none') {
-                // Keep the current page when changing sort direction
-                loadAlbums(currentPage, currentSort, true);
-            }
+            updateSortDirectionButton();
+            loadAlbums(currentPage, currentSort, true);
+        }
+
+        function updateSortDirectionButton() {
+            const btn = document.getElementById('sortDirectionBtn');
+            const icon = btn.querySelector('i');
+            icon.className = sortDirection === 'asc' ? 'fas fa-sort-amount-up' : 'fas fa-sort-amount-down';
+            btn.innerHTML = icon.outerHTML + ' ' + (sortDirection === 'asc' ? 'Ascending' : 'Descending');
+        }
+
+        function updateSortButtons() {
+            document.querySelectorAll('.btn-group .btn').forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.textContent.toLowerCase().includes(currentSort)) {
+                    btn.classList.add('active');
+                }
+            });
         }
 
         function changePage(delta) {
             const newPage = currentPage + delta;
             if (newPage >= 1 && newPage <= totalPages) {
-                loadAlbums(newPage, currentSort, true);
+                loadAlbums(newPage, currentSort);
             }
         }
 
-        function createAlbumCard(album) {
-            const card = document.createElement('div');
-            card.className = 'col-md-4 col-lg-3 mb-4';
-            
-            const content = `
-                <div class="card album-card h-100">
-                    <div class="album-cover">
-                        <img src="${album.thumb || 'https://via.placeholder.com/150'}" 
-                             alt="${album.title}" 
-                             onerror="this.src='https://via.placeholder.com/150'">
-                    </div>
-                    <div class="album-details p-3">
-                        <h5 class="card-title">${album.title}</h5>
-                        <p class="artist">${album.artist}</p>
-                        <p class="year">${album.year}</p>
-                        <p class="album-label">
-                            <i class="fas fa-record-vinyl"></i>
-                            ${album.label}
-                        </p>
-                        <div class="d-flex align-items-center mb-2">
-                            <label class="me-2">Price:</label>
-                            <input type="number" 
-                                   class="form-control form-control-sm price-input" 
-                                   value="${album.price || ''}" 
-                                   step="0.01" 
-                                   min="0"
-                                   onchange="updatePrice('${album.id}', this.value)">
-                        </div>
-                        ${album.resource_url ? `
-                            <a href="${album.resource_url}" target="_blank" class="btn btn-sm btn-outline-primary">
-                                <i class="fab fa-discogs"></i> View on Discogs
-                            </a>
-                        ` : ''}
-                    </div>
-                </div>
-            `;
-            
-            card.innerHTML = content;
-            return card;
-        }
-
-        async function updatePrice(albumId, price) {
-            try {
-                const response = await fetch(`/api/albums/${albumId}/price`, {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ price: parseFloat(price) || 0 })
-                });
-
-                if (!response.ok) {
-                    throw new Error('Failed to update price');
-                }
-
-                showSuccess('Price updated successfully');
-            } catch (error) {
-                showError(error.message);
-            }
-        }
-
-        async function createAlbum(event) {
-            event.preventDefault();
-            showLoading();
-
-            try {
-                // Parse tracklist
-                const tracklistText = document.getElementById('tracklist').value;
-                const tracklist = tracklistText.split('\n')
-                    .filter(line => line.trim())
-                    .map(line => {
-                        const [position, title, duration] = line.split('-').map(s => s.trim());
-                        return { position, title, duration };
-                    });
-
-                // Parse genres and styles
-                const genres = document.getElementById('genres').value
-                    .split(',')
-                    .map(g => g.trim())
-                    .filter(g => g);
-                const styles = document.getElementById('styles').value
-                    .split(',')
-                    .map(s => s.trim())
-                    .filter(s => s);
-
-                const albumData = {
-                    title: document.getElementById('title').value,
-                    artist: document.getElementById('artist').value,
-                    year: parseInt(document.getElementById('year').value),
-                    label: document.getElementById('label').value,
-                    genres: genres,
-                    styles: styles,
-                    tracklist: tracklist
-                };
-
-                const response = await fetch('/api/albums', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(albumData)
-                });
-
-                if (!response.ok) {
-                    const error = await response.json();
-                    throw new Error(error.error || 'Failed to create album');
-                }
-
-                const result = await response.json();
-                showSuccess('Album created successfully!');
-                document.getElementById('createAlbumForm').reset();
-                
-                // Reload albums to show the new one
-                loadAlbums(currentPage);
-            } catch (error) {
-                showError(error.message);
-            } finally {
-                hideLoading();
-            }
-        }
-
-        // Show loading indicator
         function showLoading() {
             document.getElementById('loading').style.display = 'block';
-            document.getElementById('error').style.display = 'none';
-            document.getElementById('success').style.display = 'none';
         }
 
-        // Hide loading indicator
         function hideLoading() {
             document.getElementById('loading').style.display = 'none';
         }
 
-        // Show error message
         function showError(message) {
             const errorDiv = document.getElementById('error');
             errorDiv.textContent = message;
             errorDiv.style.display = 'block';
+            setTimeout(() => {
+                errorDiv.style.display = 'none';
+            }, 5000);
         }
 
-        // Show success message
         function showSuccess(message) {
             const successDiv = document.getElementById('success');
             successDiv.textContent = message;
@@ -470,14 +423,6 @@
                 successDiv.style.display = 'none';
             }, 3000);
         }
-
-        // Show price management section
-        function showPriceManagement() {
-            loadAlbums();
-        }
-
-        // Initial load
-        loadAlbums();
     </script>
 </body>
 </html> 

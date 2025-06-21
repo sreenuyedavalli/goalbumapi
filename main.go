@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -13,7 +12,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gin-gonic/contrib/static"
+	"github.com/gin-contrib/sessions"
+	"github.com/gin-contrib/sessions/cookie"
 	"github.com/gin-gonic/gin"
 	_ "github.com/lib/pq"
 )
@@ -59,32 +59,63 @@ type PriceUpdate struct {
 	Price float64 `json:"price"`
 }
 
+// LoginRequest represents a login request
+type LoginRequest struct {
+	Password string `json:"password"`
+}
+
+// PayPalPaymentRequest represents a PayPal payment completion request
+type PayPalPaymentRequest struct {
+	OrderID        string                 `json:"orderID"`
+	AlbumID        string                 `json:"albumID"`
+	AlbumTitle     string                 `json:"albumTitle"`
+	AlbumArtist    string                 `json:"albumArtist"`
+	Amount         float64                `json:"amount"`
+	PayerID        string                 `json:"payerID"`
+	PaymentDetails map[string]interface{} `json:"paymentDetails"`
+}
+
+// PayPalPaymentResponse represents a PayPal payment response
+type PayPalPaymentResponse struct {
+	Success bool   `json:"success"`
+	Message string `json:"message"`
+	OrderID string `json:"orderID,omitempty"`
+}
+
 // Cache for Discogs albums with prices
 var (
 	discogsCache     []album
 	discogsCacheTime time.Time
 	cacheMutex       sync.RWMutex
 	cacheDuration    = 1 * time.Hour // Cache duration
-	db               *sql.DB
 )
 
-// CreateAlbumRequest represents the request to create a new album
-type CreateAlbumRequest struct {
-	Title     string   `json:"title"`
-	Artist    string   `json:"artist"`
-	Year      int      `json:"year"`
-	Label     string   `json:"label"`
-	Genres    []string `json:"genres"`
-	Styles    []string `json:"styles"`
-	Tracklist []struct {
-		Position string `json:"position"`
-		Title    string `json:"title"`
-		Duration string `json:"duration"`
-	} `json:"tracklist"`
+// album represents data about a record album.
+type album struct {
+	ID          string  `json:"id"`
+	Title       string  `json:"title"`
+	Artist      string  `json:"artist"`
+	Year        string  `json:"year"`
+	Price       float64 `json:"price"`
+	Thumb       string  `json:"thumb"`
+	ResourceURL string  `json:"resource_url"`
+	Label       string  `json:"label"`
+}
+
+// DiscogsService interface for fetching collections
+type DiscogsService interface {
+	FetchCollection(db Database, page, perPage int) ([]album, int, error)
+}
+
+// RealDiscogsService implements DiscogsService
+type RealDiscogsService struct{}
+
+func (r *RealDiscogsService) FetchCollection(db Database, page, perPage int) ([]album, int, error) {
+	return fetchDiscogsCollection(db, page, perPage)
 }
 
 // initDB initializes the database connection and creates necessary tables
-func initDB() error {
+func initDB() (Database, error) {
 	// Get database configuration from environment variables
 	dbHost := os.Getenv("DB_HOST")
 	dbPort := os.Getenv("DB_PORT")
@@ -94,7 +125,7 @@ func initDB() error {
 
 	// Validate required environment variables
 	if dbHost == "" || dbPort == "" || dbUser == "" || dbPassword == "" || dbName == "" {
-		return fmt.Errorf("missing required database environment variables: DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME")
+		return nil, fmt.Errorf("missing required database environment variables: DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME")
 	}
 
 	// Create connection string
@@ -102,15 +133,14 @@ func initDB() error {
 		dbHost, dbPort, dbUser, dbPassword, dbName)
 
 	// Open database connection
-	var err error
-	db, err = sql.Open("postgres", connStr)
+	db, err := sql.Open("postgres", connStr)
 	if err != nil {
-		return fmt.Errorf("error opening database: %v", err)
+		return nil, fmt.Errorf("error opening database: %v", err)
 	}
 
 	// Test the connection
 	if err = db.Ping(); err != nil {
-		return fmt.Errorf("error connecting to database: %v", err)
+		return nil, fmt.Errorf("error connecting to database: %v", err)
 	}
 
 	// Create album_prices table if it doesn't exist
@@ -122,10 +152,28 @@ func initDB() error {
 		)
 	`)
 	if err != nil {
-		return fmt.Errorf("error creating table: %v", err)
+		return nil, fmt.Errorf("error creating album_prices table: %v", err)
 	}
 
-	return nil
+	// Create orders table if it doesn't exist
+	_, err = db.Exec(`
+		CREATE TABLE IF NOT EXISTS orders (
+			id SERIAL PRIMARY KEY,
+			order_id VARCHAR(255) UNIQUE NOT NULL,
+			album_id VARCHAR(255) NOT NULL,
+			album_title VARCHAR(500) NOT NULL,
+			album_artist VARCHAR(500) NOT NULL,
+			amount DECIMAL(10,2) NOT NULL,
+			payer_id VARCHAR(255) NOT NULL,
+			payment_status VARCHAR(50) DEFAULT 'completed',
+			created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+		)
+	`)
+	if err != nil {
+		return nil, fmt.Errorf("error creating orders table: %v", err)
+	}
+
+	return &PostgresDB{db: db}, nil
 }
 
 // getEnv gets an environment variable or returns a default value
@@ -138,56 +186,44 @@ func getEnv(key, defaultValue string) string {
 }
 
 // getAlbumPrice retrieves the price for an album from the database
-func getAlbumPrice(albumID string) (float64, error) {
-	var price float64
-	err := db.QueryRow("SELECT price FROM album_prices WHERE album_id = $1", albumID).Scan(&price)
-	if err == sql.ErrNoRows {
-		return 0, nil
-	}
-	if err != nil {
-		return 0, fmt.Errorf("error getting album price: %v", err)
-	}
-	return price, nil
+func getAlbumPrice(db Database, albumID string) (float64, error) {
+	return db.GetAlbumPrice(albumID)
 }
 
 // updateAlbumPrice updates the price for an album in the database
-func updateAlbumPrice(c *gin.Context) {
-	id := c.Param("id")
-	var update PriceUpdate
+func updateAlbumPrice(db Database) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id := c.Param("id")
+		var update PriceUpdate
 
-	if err := c.BindJSON(&update); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid price data"})
-		return
-	}
-
-	// Update price in database
-	_, err := db.Exec(`
-		INSERT INTO album_prices (album_id, price, updated_at)
-		VALUES ($1, $2, CURRENT_TIMESTAMP)
-		ON CONFLICT (album_id) DO UPDATE
-		SET price = $2, updated_at = CURRENT_TIMESTAMP
-	`, id, update.Price)
-
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update price"})
-		return
-	}
-
-	// Update price in cache if album exists
-	cacheMutex.Lock()
-	for i, album := range discogsCache {
-		if album.ID == id {
-			discogsCache[i].Price = update.Price
-			break
+		if err := c.BindJSON(&update); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid price data"})
+			return
 		}
-	}
-	cacheMutex.Unlock()
 
-	c.JSON(http.StatusOK, gin.H{"message": "Price updated successfully"})
+		// Update price in database
+		err := db.SetAlbumPrice(id, update.Price)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update price"})
+			return
+		}
+
+		// Update price in cache if album exists
+		cacheMutex.Lock()
+		for i, album := range discogsCache {
+			if album.ID == id {
+				discogsCache[i].Price = update.Price
+				break
+			}
+		}
+		cacheMutex.Unlock()
+
+		c.JSON(http.StatusOK, gin.H{"message": "Price updated successfully"})
+	}
 }
 
 // fetchDiscogsCollection fetches albums from Discogs API
-func fetchDiscogsCollection(page int, perPage int) ([]album, int, error) {
+func fetchDiscogsCollection(db Database, page int, perPage int) ([]album, int, error) {
 	// Get Discogs token from environment variable
 	discogsToken := os.Getenv("DISCOGS_TOKEN")
 	if discogsToken == "" {
@@ -248,7 +284,7 @@ func fetchDiscogsCollection(page int, perPage int) ([]album, int, error) {
 		albumID := strconv.Itoa(release.ID)
 
 		// Get stored price from database
-		price, err := getAlbumPrice(albumID)
+		price, err := db.GetAlbumPrice(albumID)
 		if err != nil {
 			fmt.Printf("Error getting price for album %s: %v\n", albumID, err)
 			price = 0
@@ -290,241 +326,245 @@ func fetchDiscogsCollection(page int, perPage int) ([]album, int, error) {
 	return albums, discogsResp.Pagination.Items, nil
 }
 
-// postAlbums adds an album from JSON received in the request body.
-func postAlbums(c *gin.Context) {
-	var newAlbum album
+// Update getAlbums to accept both Database and DiscogsService
+func getAlbums(db Database, discogs DiscogsService) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		c.Header("Content-Type", "application/json")
 
-	// Call BindJSON to bind the received JSON to
-	// newAlbum.
-	if err := c.BindJSON(&newAlbum); err != nil {
-		return
-	}
+		// Get pagination parameters from query string
+		page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+		perPage, _ := strconv.Atoi(c.DefaultQuery("per_page", "12"))
+		sortBy := c.DefaultQuery("sort_by", "none")
+		sortDirection := c.DefaultQuery("direction", "desc")
 
-	// Add the new album to the slice.
-	albums = append(albums, newAlbum)
-	c.IndentedJSON(http.StatusCreated, newAlbum)
-}
+		if page < 1 {
+			page = 1
+		}
+		if perPage < 1 {
+			perPage = 12
+		}
 
-// getAlbumByID locates the album whose ID value matches the id
-// parameter sent by the client, then returns that album as a response.
-func getAlbumByID(c *gin.Context) {
-	id := c.Param("id")
-
-	// Loop over the list of albums, looking for
-	// an album whose ID value matches the parameter.
-	for _, a := range albums {
-		if a.ID == id {
-			c.IndentedJSON(http.StatusOK, a)
+		albums, totalItems, err := discogs.FetchCollection(db, page, perPage)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
+
+		// Sort albums if requested
+		if sortBy != "none" {
+			switch sortBy {
+			case "title":
+				sort.Slice(albums, func(i, j int) bool {
+					if sortDirection == "asc" {
+						return albums[i].Title < albums[j].Title
+					}
+					return albums[i].Title > albums[j].Title
+				})
+			case "artist":
+				sort.Slice(albums, func(i, j int) bool {
+					if sortDirection == "asc" {
+						return albums[i].Artist < albums[j].Artist
+					}
+					return albums[i].Artist > albums[j].Artist
+				})
+			case "year":
+				sort.Slice(albums, func(i, j int) bool {
+					yearI, _ := strconv.Atoi(albums[i].Year)
+					yearJ, _ := strconv.Atoi(albums[j].Year)
+					if sortDirection == "asc" {
+						return yearI < yearJ
+					}
+					return yearI > yearJ
+				})
+			case "price":
+				sort.Slice(albums, func(i, j int) bool {
+					if sortDirection == "asc" {
+						return albums[i].Price < albums[j].Price
+					}
+					return albums[i].Price > albums[j].Price
+				})
+			}
+		}
+
+		// Calculate pagination info
+		totalPages := (totalItems + perPage - 1) / perPage
+		if totalPages < 1 {
+			totalPages = 1
+		}
+
+		// Ensure page is within bounds
+		if page > totalPages {
+			page = totalPages
+		}
+
+		// Create response
+		response := gin.H{
+			"albums": albums,
+			"pagination": gin.H{
+				"current_page": page,
+				"total_pages":  totalPages,
+				"total_items":  totalItems,
+				"per_page":     perPage,
+			},
+			"sort": gin.H{
+				"by":        sortBy,
+				"direction": sortDirection,
+			},
+		}
+
+		c.JSON(http.StatusOK, response)
 	}
-	c.IndentedJSON(http.StatusNotFound, gin.H{"message": "album not found"})
 }
 
-// album represents data about a record album.
-type album struct {
-	ID          string  `json:"id"`
-	Title       string  `json:"title"`
-	Artist      string  `json:"artist"`
-	Year        string  `json:"year"`
-	Price       float64 `json:"price"`
-	Thumb       string  `json:"thumb"`
-	ResourceURL string  `json:"resource_url"`
-	Label       string  `json:"label"`
+// Authentication middleware
+func requireAuth() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		session := sessions.Default(c)
+		authenticated := session.Get("authenticated")
+
+		if authenticated == nil || authenticated != true {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Authentication required"})
+			c.Abort()
+			return
+		}
+
+		c.Next()
+	}
 }
 
-// getAlbums responds with the list of all albums as JSON.
-func getAlbums(c *gin.Context) {
-	c.Header("Content-Type", "application/json")
+// Login handler
+func loginHandler() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var loginReq LoginRequest
+		if err := c.BindJSON(&loginReq); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+			return
+		}
 
-	// Get pagination parameters from query string
-	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
-	perPage, _ := strconv.Atoi(c.DefaultQuery("per_page", "12"))
-	sortBy := c.DefaultQuery("sort_by", "none")
-	sortDirection := c.DefaultQuery("direction", "desc")
+		// Get admin password from environment variable
+		adminPassword := os.Getenv("ADMIN_PASSWORD")
+		if adminPassword == "" {
+			// Default password if not set (for development)
+			adminPassword = "admin123"
+			fmt.Printf("ADMIN_PASSWORD not set, using default password\n")
+		} else {
+			fmt.Printf("ADMIN_PASSWORD is set, length: %d\n", len(adminPassword))
+		}
 
-	// Validate pagination parameters
-	if page < 1 {
-		page = 1
-	}
-	if perPage < 1 {
-		perPage = 12
-	}
+		// Debug: Log only non-sensitive information
+		fmt.Printf("Login attempt - Received password length: %d\n", len(loginReq.Password))
 
-	// Fetch albums from Discogs
-	albums, totalItems, err := fetchDiscogsCollection(page, perPage)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
+		// Check password
+		if loginReq.Password == adminPassword {
+			session := sessions.Default(c)
+			session.Set("authenticated", true)
+			session.Save()
 
-	// Sort albums if requested
-	if sortBy != "none" {
-		switch sortBy {
-		case "title":
-			sort.Slice(albums, func(i, j int) bool {
-				if sortDirection == "asc" {
-					return albums[i].Title < albums[j].Title
-				}
-				return albums[i].Title > albums[j].Title
-			})
-		case "artist":
-			sort.Slice(albums, func(i, j int) bool {
-				if sortDirection == "asc" {
-					return albums[i].Artist < albums[j].Artist
-				}
-				return albums[i].Artist > albums[j].Artist
-			})
-		case "year":
-			sort.Slice(albums, func(i, j int) bool {
-				yearI, _ := strconv.Atoi(albums[i].Year)
-				yearJ, _ := strconv.Atoi(albums[j].Year)
-				if sortDirection == "asc" {
-					return yearI < yearJ
-				}
-				return yearI > yearJ
-			})
-		case "price":
-			sort.Slice(albums, func(i, j int) bool {
-				if sortDirection == "asc" {
-					return albums[i].Price < albums[j].Price
-				}
-				return albums[i].Price > albums[j].Price
-			})
+			fmt.Printf("Login successful\n")
+			c.JSON(http.StatusOK, gin.H{"message": "Login successful"})
+		} else {
+			fmt.Printf("Login failed - password mismatch\n")
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid password"})
 		}
 	}
-
-	// Calculate pagination info
-	totalPages := (totalItems + perPage - 1) / perPage
-	if totalPages < 1 {
-		totalPages = 1
-	}
-
-	// Ensure page is within bounds
-	if page > totalPages {
-		page = totalPages
-	}
-
-	// Create response
-	response := gin.H{
-		"albums": albums,
-		"pagination": gin.H{
-			"current_page": page,
-			"total_pages":  totalPages,
-			"total_items":  totalItems,
-			"per_page":     perPage,
-		},
-		"sort": gin.H{
-			"by":        sortBy,
-			"direction": sortDirection,
-		},
-	}
-
-	c.JSON(http.StatusOK, response)
 }
 
-// albums slice to seed record album data.
-var albums = []album{
-	{ID: "1", Title: "Blue Train", Artist: "John Coltrane", Year: "1977", Price: 56.99},
-	{ID: "2", Title: "Jeru", Artist: "Gerry Mulligan", Year: "1987", Price: 17.99},
-	{ID: "3", Title: "Sarah Vaughan and Clifford Brown", Artist: "Sarah Vaughan", Year: "1997", Price: 39.99},
+// Logout handler
+func logoutHandler() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		session := sessions.Default(c)
+		session.Clear()
+		session.Save()
+
+		c.JSON(http.StatusOK, gin.H{"message": "Logout successful"})
+	}
 }
 
-// createAlbum creates a new album in Discogs
-func createAlbum(c *gin.Context) {
-	var albumReq CreateAlbumRequest
-	if err := c.BindJSON(&albumReq); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request data"})
-		return
+// checkAuthHandler checks if user is authenticated
+func checkAuthHandler() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		session := sessions.Default(c)
+		authenticated := session.Get("authenticated")
+
+		if authenticated == true {
+			c.JSON(http.StatusOK, gin.H{"authenticated": true})
+		} else {
+			c.JSON(http.StatusUnauthorized, gin.H{"authenticated": false})
+		}
 	}
+}
 
-	// Get Discogs token from environment variable
-	discogsToken := os.Getenv("DISCOGS_TOKEN")
-	if discogsToken == "" {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Discogs token not configured"})
-		return
+// completePayPalPaymentHandler handles PayPal payment completion
+func completePayPalPaymentHandler(db Database) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var paymentReq PayPalPaymentRequest
+		if err := c.BindJSON(&paymentReq); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid payment data"})
+			return
+		}
+
+		// Store the order in the database
+		_, err := db.(*PostgresDB).db.Exec(`
+			INSERT INTO orders (order_id, album_id, album_title, album_artist, amount, payer_id)
+			VALUES ($1, $2, $3, $4, $5, $6)
+		`, paymentReq.OrderID, paymentReq.AlbumID, paymentReq.AlbumTitle, paymentReq.AlbumArtist, paymentReq.Amount, paymentReq.PayerID)
+
+		if err != nil {
+			fmt.Printf("Error storing order: %v\n", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to process payment"})
+			return
+		}
+
+		// Log the payment for debugging
+		fmt.Printf("PayPal payment completed and stored:\n")
+		fmt.Printf("  Order ID: %s\n", paymentReq.OrderID)
+		fmt.Printf("  Album ID: %s\n", paymentReq.AlbumID)
+		fmt.Printf("  Album: %s by %s\n", paymentReq.AlbumTitle, paymentReq.AlbumArtist)
+		fmt.Printf("  Amount: $%.2f\n", paymentReq.Amount)
+		fmt.Printf("  Payer ID: %s\n", paymentReq.PayerID)
+
+		// In a real application, you would also:
+		// 1. Verify the payment with PayPal's API
+		// 2. Send confirmation emails
+		// 3. Update inventory
+		// 4. Trigger shipping process
+
+		response := PayPalPaymentResponse{
+			Success: true,
+			Message: "Payment processed successfully",
+			OrderID: paymentReq.OrderID,
+		}
+
+		c.JSON(http.StatusOK, response)
 	}
-
-	// Create the release data
-	releaseData := map[string]interface{}{
-		"title": albumReq.Title,
-		"artists": []map[string]interface{}{
-			{
-				"name": albumReq.Artist,
-			},
-		},
-		"year":      albumReq.Year,
-		"labels":    []map[string]interface{}{{"name": albumReq.Label}},
-		"genres":    albumReq.Genres,
-		"styles":    albumReq.Styles,
-		"tracklist": albumReq.Tracklist,
-	}
-
-	// Convert to JSON
-	jsonData, err := json.Marshal(releaseData)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error preparing request data"})
-		return
-	}
-
-	// Create HTTP client
-	client := &http.Client{
-		Timeout: 10 * time.Second,
-	}
-
-	// Create the release in Discogs
-	url := "https://api.discogs.com/database/search"
-	httpReq, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error creating request"})
-		return
-	}
-
-	httpReq.Header.Add("User-Agent", "AlbumCollectionApp/1.0")
-	httpReq.Header.Add("Authorization", fmt.Sprintf("Discogs token=%s", discogsToken))
-	httpReq.Header.Add("Content-Type", "application/json")
-
-	resp, err := client.Do(httpReq)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error making request to Discogs"})
-		return
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error reading response"})
-		return
-	}
-
-	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": fmt.Sprintf("Discogs API returned status %d: %s", resp.StatusCode, string(body)),
-		})
-		return
-	}
-
-	// Parse the response
-	var response map[string]interface{}
-	if err := json.Unmarshal(body, &response); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error parsing response"})
-		return
-	}
-
-	c.JSON(http.StatusOK, response)
 }
 
 func main() {
 	// Initialize database
-	if err := initDB(); err != nil {
+	db, err := initDB()
+	if err != nil {
 		fmt.Printf("Error initializing database: %v\n", err)
 		os.Exit(1)
 	}
-	defer db.Close()
 
 	router := gin.Default()
-	// Serve frontend static files
-	router.Use(static.Serve("/", static.LocalFile("./views/js", true)))
+
+	// Setup session middleware
+	store := cookie.NewStore([]byte("vinyl-monkey-secret-key"))
+	router.Use(sessions.Sessions("vinyl-monkey-session", store))
+
+	// Serve static files using gin's built-in static file serving
+	router.Static("/static", "./views/js")
+	router.LoadHTMLGlob("./views/js/*.html")
+
+	// Public routes
+	router.GET("/albums", getAlbums(db, &RealDiscogsService{}))
+	router.GET("/login", func(c *gin.Context) {
+		c.HTML(http.StatusOK, "login.html", nil)
+	})
+	router.GET("/", func(c *gin.Context) {
+		c.HTML(http.StatusOK, "index.html", nil)
+	})
 
 	// Setup route group for the API
 	api := router.Group("/api")
@@ -535,19 +575,32 @@ func main() {
 			})
 		})
 
-		// Add price update endpoint
-		api.PUT("/albums/:id/price", updateAlbumPrice)
+		// Authentication routes
+		auth := api.Group("/auth")
+		{
+			auth.POST("/login", loginHandler())
+			auth.POST("/logout", logoutHandler())
+			auth.GET("/check", checkAuthHandler())
+		}
+
+		// PayPal payment routes
+		paypal := api.Group("/paypal")
+		{
+			paypal.POST("/complete-payment", completePayPalPaymentHandler(db))
+		}
+
+		// Protected admin routes
+		admin := api.Group("/admin")
+		admin.Use(requireAuth())
+		{
+			admin.PUT("/albums/:id/price", updateAlbumPrice(db))
+		}
 	}
 
-	router.GET("/albums", getAlbums)
-	router.GET("/albums/:id", getAlbumByID)
-	router.POST("/albums", postAlbums)
-
-	// Add new route for creating albums
-	router.POST("/api/albums", createAlbum)
-
-	// Serve admin page
-	router.StaticFile("/admin", "./views/js/admin.html")
+	// Protected admin page
+	router.GET("/admin", requireAuth(), func(c *gin.Context) {
+		c.HTML(http.StatusOK, "admin.html", nil)
+	})
 
 	router.Run(":3000")
 }
