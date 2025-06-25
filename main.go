@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"sort"
 	"strconv"
@@ -114,6 +115,125 @@ func (r *RealDiscogsService) FetchCollection(db Database, page, perPage int) ([]
 	return fetchDiscogsCollection(db, page, perPage)
 }
 
+// WikipediaResponse represents the response from Wikipedia API
+type WikipediaResponse struct {
+	Query struct {
+		Pages map[string]struct {
+			PageID  int    `json:"pageid"`
+			Title   string `json:"title"`
+			Extract string `json:"extract"`
+		} `json:"pages"`
+	} `json:"query"`
+}
+
+// WikipediaSearchResponse represents the search response from Wikipedia API
+type WikipediaSearchResponse struct {
+	Query struct {
+		Search []struct {
+			Title   string `json:"title"`
+			Snippet string `json:"snippet"`
+		} `json:"search"`
+	} `json:"query"`
+}
+
+// fetchWikipediaDescription fetches album description from Wikipedia
+func fetchWikipediaDescription(albumTitle, artist string) (string, error) {
+	client := &http.Client{
+		Timeout: 10 * time.Second,
+	}
+
+	// First, search for the album
+	searchQuery := fmt.Sprintf("%s %s album", albumTitle, artist)
+	searchURL := fmt.Sprintf("https://en.wikipedia.org/w/api.php?action=query&format=json&list=search&srsearch=%s&srlimit=1",
+		url.QueryEscape(searchQuery))
+
+	req, err := http.NewRequest("GET", searchURL, nil)
+	if err != nil {
+		return "", fmt.Errorf("error creating search request: %v", err)
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("error making search request: %v", err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("error reading search response: %v", err)
+	}
+
+	var searchResp WikipediaSearchResponse
+	if err := json.Unmarshal(body, &searchResp); err != nil {
+		return "", fmt.Errorf("error parsing search response: %v", err)
+	}
+
+	if len(searchResp.Query.Search) == 0 {
+		return "", fmt.Errorf("no Wikipedia article found")
+	}
+
+	// Get the page content using the search result title
+	pageTitle := searchResp.Query.Search[0].Title
+	contentURL := fmt.Sprintf("https://en.wikipedia.org/w/api.php?action=query&format=json&prop=extracts&exintro=true&explaintext=true&titles=%s",
+		url.QueryEscape(pageTitle))
+
+	req, err = http.NewRequest("GET", contentURL, nil)
+	if err != nil {
+		return "", fmt.Errorf("error creating content request: %v", err)
+	}
+
+	resp, err = client.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("error making content request: %v", err)
+	}
+	defer resp.Body.Close()
+
+	body, err = io.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("error reading content response: %v", err)
+	}
+
+	var wikiResp WikipediaResponse
+	if err := json.Unmarshal(body, &wikiResp); err != nil {
+		return "", fmt.Errorf("error parsing content response: %v", err)
+	}
+
+	// Extract the description from the first page
+	for _, page := range wikiResp.Query.Pages {
+		if page.Extract != "" {
+			// Limit to first 200 characters and add ellipsis if longer
+			description := page.Extract
+			if len(description) > 200 {
+				description = description[:200] + "..."
+			}
+			return description, nil
+		}
+	}
+
+	return "", fmt.Errorf("no description found")
+}
+
+// getAlbumDescriptionHandler handles requests for album descriptions
+func getAlbumDescriptionHandler() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		albumTitle := c.Query("title")
+		artist := c.Query("artist")
+
+		if albumTitle == "" || artist == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Album title and artist are required"})
+			return
+		}
+
+		description, err := fetchWikipediaDescription(albumTitle, artist)
+		if err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "No description found"})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{"description": description})
+	}
+}
+
 // initDB initializes the database connection and creates necessary tables
 func initDB() (Database, error) {
 	// Get database configuration from environment variables
@@ -171,6 +291,19 @@ func initDB() (Database, error) {
 	`)
 	if err != nil {
 		return nil, fmt.Errorf("error creating orders table: %v", err)
+	}
+
+	// Create album_of_month_signups table if it doesn't exist
+	_, err = db.Exec(`
+		CREATE TABLE IF NOT EXISTS album_of_month_signups (
+			id SERIAL PRIMARY KEY,
+			name VARCHAR(255) NOT NULL,
+			email VARCHAR(255) NOT NULL,
+			signup_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+		)
+	`)
+	if err != nil {
+		return nil, fmt.Errorf("error creating album_of_month_signups table: %v", err)
 	}
 
 	return &PostgresDB{db: db}, nil
@@ -539,6 +672,33 @@ func completePayPalPaymentHandler(db Database) gin.HandlerFunc {
 	}
 }
 
+// AlbumOfMonthSignupRequest represents the sign-up form data
+type AlbumOfMonthSignupRequest struct {
+	Name  string `json:"name"`
+	Email string `json:"email"`
+}
+
+// Handler for album of the month sign-up
+func albumOfMonthSignupHandler(db Database) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var req AlbumOfMonthSignupRequest
+		if err := c.BindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid data"})
+			return
+		}
+		if req.Name == "" || req.Email == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Name and email are required"})
+			return
+		}
+		err := db.AddAlbumOfMonthSignup(req.Name, req.Email)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save sign-up"})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"message": "Sign-up successful"})
+	}
+}
+
 func main() {
 	// Initialize database
 	db, err := initDB()
@@ -561,6 +721,9 @@ func main() {
 	router.GET("/albums", getAlbums(db, &RealDiscogsService{}))
 	router.GET("/login", func(c *gin.Context) {
 		c.HTML(http.StatusOK, "login.html", nil)
+	})
+	router.GET("/album-of-month", func(c *gin.Context) {
+		c.HTML(http.StatusOK, "album-of-month.html", nil)
 	})
 	router.GET("/", func(c *gin.Context) {
 		c.HTML(http.StatusOK, "index.html", nil)
@@ -589,12 +752,18 @@ func main() {
 			paypal.POST("/complete-payment", completePayPalPaymentHandler(db))
 		}
 
+		// Wikipedia description route
+		api.GET("/album-description", getAlbumDescriptionHandler())
+
 		// Protected admin routes
 		admin := api.Group("/admin")
 		admin.Use(requireAuth())
 		{
 			admin.PUT("/albums/:id/price", updateAlbumPrice(db))
 		}
+
+		// Album of the month sign-up route
+		api.POST("/album-of-month-signup", albumOfMonthSignupHandler(db))
 	}
 
 	// Protected admin page

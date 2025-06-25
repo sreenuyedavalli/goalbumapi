@@ -8,6 +8,7 @@ type Database interface {
 	GetAlbumPrice(albumID string) (float64, error)
 	SetAlbumPrice(albumID string, price float64) error
 	GetAlbumCount() (int, error)
+	AddAlbumOfMonthSignup(name, email string) error
 }
 
 type PostgresDB struct {
@@ -39,4 +40,12 @@ func (p *PostgresDB) GetAlbumCount() (int, error) {
 	var count int
 	err := p.db.QueryRow("SELECT COUNT(DISTINCT album_id) FROM album_prices").Scan(&count)
 	return count, err
+}
+
+func (p *PostgresDB) AddAlbumOfMonthSignup(name, email string) error {
+	_, err := p.db.Exec(`
+		INSERT INTO album_of_month_signups (name, email, signup_at)
+			VALUES ($1, $2, NOW())
+	`, name, email)
+	return err
 }

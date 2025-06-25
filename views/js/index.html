@@ -33,6 +33,7 @@
             padding-top: 100%;
             position: relative;
             background: #f5f5f5;
+            cursor: pointer;
         }
         .album-thumb img {
             position: absolute;
@@ -196,10 +197,65 @@
             width: 100%;
             max-width: 200px;
         }
+        .album-tooltip {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            max-width: 300px;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+            font-size: 0.9em;
+            line-height: 1.4;
+            text-align: center;
+        }
+        .album-thumb:hover .album-tooltip {
+            opacity: 1;
+            visibility: visible;
+        }
+        .album-tooltip.loading {
+            background: rgba(0, 0, 0, 0.8);
+        }
+        .album-tooltip .tooltip-content {
+            margin: 0;
+        }
+        .album-tooltip .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #ffffff;
+            border-radius: 50%;
+            border-top-color: transparent;
+            animation: spin 1s ease-in-out infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body>
     <div class="container">
+        <!-- Album of the Month Call-to-Action -->
+        <div class="text-center mb-4">
+            <div class="card" style="max-width: 500px; margin: 0 auto; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none;">
+                <div class="card-body">
+                    <h4 class="card-title mb-3">
+                        <i class="fas fa-music"></i> Get Album of the Month Recommendations
+                    </h4>
+                    <p class="card-text mb-3">Discover amazing vinyl records curated just for you!</p>
+                    <a href="/album-of-month" class="btn btn-light btn-lg">
+                        <i class="fas fa-paper-plane"></i> Sign Up Now
+                    </a>
+                </div>
+            </div>
+        </div>
+
         <h1 class="text-center mb-4">Vinyl Monkey</h1>
         
         <!-- Error Message -->
@@ -277,6 +333,12 @@
             const content = `
                 <div class="album-thumb">
                     <img src="${album.thumb || 'https://via.placeholder.com/150'}" alt="${album.title}" onerror="this.src='https://via.placeholder.com/150'">
+                    <div class="album-tooltip" id="tooltip-${album.id}">
+                        <div class="tooltip-content">
+                            <div class="loading-spinner"></div>
+                            <p>Loading description...</p>
+                        </div>
+                    </div>
                 </div>
                 <div class="album-info">
                     <h3>${album.title}</h3>
@@ -292,6 +354,30 @@
             `;
             
             card.innerHTML = content;
+            
+            // Add hover functionality for Wikipedia description
+            const albumThumb = card.querySelector('.album-thumb');
+            const tooltip = card.querySelector('.album-tooltip');
+            let descriptionLoaded = false;
+            
+            albumThumb.addEventListener('mouseenter', async function() {
+                if (!descriptionLoaded) {
+                    try {
+                        const response = await fetch(`/api/album-description?title=${encodeURIComponent(album.title)}&artist=${encodeURIComponent(album.artist)}`);
+                        const data = await response.json();
+                        
+                        if (response.ok && data.description) {
+                            tooltip.querySelector('.tooltip-content').innerHTML = `<p>${data.description}</p>`;
+                        } else {
+                            tooltip.querySelector('.tooltip-content').innerHTML = '<p>No description available</p>';
+                        }
+                        descriptionLoaded = true;
+                    } catch (error) {
+                        tooltip.querySelector('.tooltip-content').innerHTML = '<p>Error loading description</p>';
+                        descriptionLoaded = true;
+                    }
+                }
+            });
             
             // Add PayPal button if price exists
             if (album.price) {
