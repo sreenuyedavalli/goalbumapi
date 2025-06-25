@@ -1,10 +1,576 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Album Rest API App</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vinyl Monkey</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding-top: 20px;
+        }
+        .album-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 20px;
+            padding: 20px;
+        }
+        .album-card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            overflow: hidden;
+            transition: transform 0.2s;
+        }
+        .album-card:hover {
+            transform: translateY(-5px);
+        }
+        .album-thumb {
+            width: 100%;
+            padding-top: 100%;
+            position: relative;
+            background: #f5f5f5;
+            cursor: pointer;
+        }
+        .album-thumb img {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .album-info {
+            padding: 15px;
+        }
+        .album-info h3 {
+            margin: 0 0 10px 0;
+            font-size: 1.1em;
+            color: #333;
+        }
+        .album-info p {
+            margin: 5px 0;
+            color: #666;
+        }
+        .album-info .artist {
+            font-weight: 500;
+            color: #444;
+        }
+        .album-info .price {
+            color: #2ecc71;
+            font-weight: 600;
+        }
+        .no-albums {
+            grid-column: 1 / -1;
+            text-align: center;
+            padding: 40px;
+            color: #666;
+            font-size: 1.2em;
+        }
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+        .loading i {
+            font-size: 2em;
+            color: #007bff;
+        }
+        .error-message {
+            display: none;
+            margin: 20px 0;
+            padding: 15px;
+            border-radius: 5px;
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .refresh-button {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+        .album-title {
+            font-size: 1.1em;
+            font-weight: 600;
+            margin-bottom: 5px;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        .discogs-link {
+            color: #007bff;
+            text-decoration: none;
+            font-size: 0.9em;
+        }
+        .discogs-link:hover {
+            text-decoration: underline;
+        }
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 20px 0;
+            gap: 10px;
+        }
+        .pagination button {
+            padding: 8px 16px;
+            border: 1px solid #ddd;
+            background-color: white;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        .pagination button:disabled {
+            background-color: #f5f5f5;
+            cursor: not-allowed;
+        }
+        .pagination button.active {
+            background-color: #007bff;
+            color: white;
+            border-color: #007bff;
+        }
+        .pagination-info {
+            margin: 0 10px;
+            color: #666;
+        }
+        .album-label {
+            color: #666;
+            font-size: 0.9em;
+            margin-bottom: 8px;
+        }
+        .album-label i {
+            margin-right: 5px;
+            color: #888;
+        }
+        .sort-controls {
+            margin: 20px 0;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        .sort-controls select {
+            padding: 8px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+            margin-left: 10px;
+        }
+        .label-group {
+            margin-bottom: 30px;
+        }
+        .label-header {
+            background: #f1f1f1;
+            padding: 10px 15px;
+            margin-bottom: 15px;
+            border-radius: 4px;
+            font-weight: 500;
+            color: #333;
+        }
+        .label-header i {
+            margin-right: 8px;
+            color: #666;
+        }
+        .year-group {
+            margin-bottom: 30px;
+        }
+        .year-header {
+            background: #f1f1f1;
+            padding: 10px 15px;
+            margin-bottom: 15px;
+            border-radius: 4px;
+            font-weight: 500;
+            color: #333;
+        }
+        .year-header i {
+            margin-right: 8px;
+            color: #666;
+        }
+        .paypal-button-container {
+            margin-top: 10px;
+            padding: 5px 0;
+        }
+        .paypal-button-container .paypal-button {
+            width: 100%;
+            max-width: 200px;
+        }
+        .album-tooltip {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            max-width: 300px;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+            font-size: 0.9em;
+            line-height: 1.4;
+            text-align: center;
+        }
+        .album-thumb:hover .album-tooltip {
+            opacity: 1;
+            visibility: visible;
+        }
+        .album-tooltip.loading {
+            background: rgba(0, 0, 0, 0.8);
+        }
+        .album-tooltip .tooltip-content {
+            margin: 0;
+        }
+        .album-tooltip .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #ffffff;
+            border-radius: 50%;
+            border-top-color: transparent;
+            animation: spin 1s ease-in-out infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
 </head>
-
 <body>
-  <h1>Welcome to the Album Rest API App</h1>
+    <div class="container">
+        <!-- Album of the Month Call-to-Action -->
+        <div class="text-center mb-4">
+            <div class="card" style="max-width: 500px; margin: 0 auto; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none;">
+                <div class="card-body">
+                    <h4 class="card-title mb-3">
+                        <i class="fas fa-music"></i> Get Album of the Month Recommendations
+                    </h4>
+                    <p class="card-text mb-3">Discover amazing vinyl records curated just for you!</p>
+                    <a href="/album-of-month" class="btn btn-light btn-lg">
+                        <i class="fas fa-paper-plane"></i> Sign Up Now
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <h1 class="text-center mb-4">Vinyl Monkey</h1>
+        
+        <!-- Error Message -->
+        <div class="error-message" id="errorMessage"></div>
+
+        <!-- Loading Indicator -->
+        <div class="loading" id="loadingIndicator">
+            <i class="fas fa-spinner fa-spin"></i>
+            <p>Loading your collection...</p>
+        </div>
+
+        <!-- Sort Controls -->
+        <div class="sort-controls">
+            <label for="sortSelect">Sort by:</label>
+            <select id="sortSelect" onchange="changeSort(this.value)">
+                <option value="none">Default Order</option>
+                <option value="label">Record Label</option>
+                <option value="year">Release Year</option>
+            </select>
+        </div>
+
+        <!-- Albums Grid -->
+        <div id="albums" class="album-grid"></div>
+
+        <!-- Pagination -->
+        <div class="pagination">
+            <button id="prevPage" onclick="changePage(-1)">Previous</button>
+            <span class="pagination-info">
+                Page <span id="currentPage">1</span> of <span id="totalPages">1</span>
+            </span>
+            <button id="nextPage" onclick="changePage(1)">Next</button>
+        </div>
+
+        <!-- Refresh Button -->
+        <button class="btn btn-primary refresh-button" onclick="loadAlbums()">
+            <i class="fas fa-sync-alt"></i> Refresh Collection
+        </button>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://www.paypal.com/sdk/js?client-id=test&currency=USD"></script>
+    <script>
+        let currentPage = 1;
+        let totalPages = 1;
+        const perPage = 12;
+        let currentSort = 'none';
+
+        // Show loading indicator
+        function showLoading() {
+            document.getElementById('loadingIndicator').style.display = 'block';
+            document.getElementById('errorMessage').style.display = 'none';
+        }
+
+        // Hide loading indicator
+        function hideLoading() {
+            document.getElementById('loadingIndicator').style.display = 'none';
+        }
+
+        // Show error message
+        function showError(message) {
+            const errorDiv = document.getElementById('errorMessage');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+        }
+
+        // Format price
+        function formatPrice(price) {
+            return price ? `$${price.toFixed(2)}` : 'Price not available';
+        }
+
+        function createAlbumCard(album) {
+            const card = document.createElement('div');
+            card.className = 'album-card';
+            
+            const content = `
+                <div class="album-thumb">
+                    <img src="${album.thumb || 'https://via.placeholder.com/150'}" alt="${album.title}" onerror="this.src='https://via.placeholder.com/150'">
+                    <div class="album-tooltip" id="tooltip-${album.id}">
+                        <div class="tooltip-content">
+                            <div class="loading-spinner"></div>
+                            <p>Loading description...</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="album-info">
+                    <h3>${album.title}</h3>
+                    <p class="artist">${album.artist}</p>
+                    <p class="year">${album.year}</p>
+                    <p class="album-label">
+                        <i class="fas fa-record-vinyl"></i>
+                        ${album.label}
+                    </p>
+                    ${album.price ? `<p class="price">$${album.price.toFixed(2)}</p>` : ''}
+                    ${album.price ? `<div class="paypal-button-container" id="paypal-button-${album.id}"></div>` : ''}
+                </div>
+            `;
+            
+            card.innerHTML = content;
+            
+            // Add hover functionality for Wikipedia description
+            const albumThumb = card.querySelector('.album-thumb');
+            const tooltip = card.querySelector('.album-tooltip');
+            let descriptionLoaded = false;
+            
+            albumThumb.addEventListener('mouseenter', async function() {
+                if (!descriptionLoaded) {
+                    try {
+                        const response = await fetch(`/api/album-description?title=${encodeURIComponent(album.title)}&artist=${encodeURIComponent(album.artist)}`);
+                        const data = await response.json();
+                        
+                        if (response.ok && data.description) {
+                            tooltip.querySelector('.tooltip-content').innerHTML = `<p>${data.description}</p>`;
+                        } else {
+                            tooltip.querySelector('.tooltip-content').innerHTML = '<p>No description available</p>';
+                        }
+                        descriptionLoaded = true;
+                    } catch (error) {
+                        tooltip.querySelector('.tooltip-content').innerHTML = '<p>Error loading description</p>';
+                        descriptionLoaded = true;
+                    }
+                }
+            });
+            
+            // Add PayPal button if price exists
+            if (album.price) {
+                setTimeout(() => {
+                    createPayPalButton(album);
+                }, 100);
+            }
+            
+            return card;
+        }
+
+        function createPayPalButton(album) {
+            const buttonContainer = document.getElementById(`paypal-button-${album.id}`);
+            if (!buttonContainer) return;
+
+            paypal.Buttons({
+                createOrder: function(data, actions) {
+                    return actions.order.create({
+                        purchase_units: [{
+                            amount: {
+                                value: album.price.toFixed(2)
+                            },
+                            description: `${album.title} by ${album.artist} (${album.year})`,
+                            custom_id: album.id
+                        }]
+                    });
+                },
+                onApprove: function(data, actions) {
+                    return actions.order.capture().then(function(details) {
+                        // Handle successful payment
+                        console.log('Payment completed:', details);
+                        
+                        // Send payment details to backend
+                        return fetch('/api/paypal/complete-payment', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                orderID: data.orderID,
+                                albumID: album.id,
+                                albumTitle: album.title,
+                                albumArtist: album.artist,
+                                amount: album.price,
+                                payerID: details.payer.payer_id,
+                                paymentDetails: details
+                            })
+                        });
+                    }).then(function(response) {
+                        if (response.ok) {
+                            alert('Payment completed successfully! Your vinyl will be shipped soon.');
+                        } else {
+                            alert('Payment completed but there was an issue processing your order. Please contact support.');
+                        }
+                    });
+                },
+                onError: function(err) {
+                    console.error('PayPal error:', err);
+                    alert('There was an error processing your payment. Please try again.');
+                }
+            }).render(buttonContainer);
+        }
+
+        // Load all albums
+        async function loadAlbums(page = 1, sortBy = currentSort) {
+            showLoading();
+            try {
+                const response = await fetch(`/albums?page=${page}&per_page=${perPage}&sort_by=${sortBy}`);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const data = await response.json();
+                
+                // Update pagination info
+                currentPage = data.pagination.current_page;
+                totalPages = data.pagination.total_pages;
+                document.getElementById('currentPage').textContent = currentPage;
+                document.getElementById('totalPages').textContent = totalPages;
+                
+                // Update pagination buttons
+                document.getElementById('prevPage').disabled = currentPage === 1;
+                document.getElementById('nextPage').disabled = currentPage === totalPages;
+
+                // Clear and populate albums
+                const albumsDiv = document.getElementById('albums');
+                albumsDiv.innerHTML = '';
+                
+                if (!data.albums || data.albums.length === 0) {
+                    const noAlbums = document.createElement('div');
+                    noAlbums.className = 'no-albums';
+                    noAlbums.textContent = 'No albums found in your collection.';
+                    albumsDiv.appendChild(noAlbums);
+                } else {
+                    if (sortBy === 'label') {
+                        // Group albums by label
+                        const labelGroups = {};
+                        data.albums.forEach(album => {
+                            if (!labelGroups[album.label]) {
+                                labelGroups[album.label] = [];
+                            }
+                            labelGroups[album.label].push(album);
+                        });
+
+                        // Sort labels alphabetically
+                        const sortedLabels = Object.keys(labelGroups).sort();
+
+                        // Create label groups
+                        sortedLabels.forEach(label => {
+                            const labelGroup = document.createElement('div');
+                            labelGroup.className = 'label-group';
+                            
+                            const labelHeader = document.createElement('div');
+                            labelHeader.className = 'label-header';
+                            labelHeader.innerHTML = `<i class="fas fa-record-vinyl"></i>${label}`;
+                            labelGroup.appendChild(labelHeader);
+
+                            const albumsGrid = document.createElement('div');
+                            albumsGrid.className = 'album-grid';
+                            
+                            labelGroups[label].forEach(album => {
+                                const albumCard = createAlbumCard(album);
+                                albumsGrid.appendChild(albumCard);
+                            });
+                            
+                            labelGroup.appendChild(albumsGrid);
+                            albumsDiv.appendChild(labelGroup);
+                        });
+                    } else if (sortBy === 'year') {
+                        // Group albums by year
+                        const yearGroups = {};
+                        data.albums.forEach(album => {
+                            if (!yearGroups[album.year]) {
+                                yearGroups[album.year] = [];
+                            }
+                            yearGroups[album.year].push(album);
+                        });
+
+                        // Sort years in descending order
+                        const sortedYears = Object.keys(yearGroups).sort((a, b) => {
+                            return parseInt(b) - parseInt(a);
+                        });
+
+                        // Create year groups
+                        sortedYears.forEach(year => {
+                            const yearGroup = document.createElement('div');
+                            yearGroup.className = 'year-group';
+                            
+                            const yearHeader = document.createElement('div');
+                            yearHeader.className = 'year-header';
+                            yearHeader.innerHTML = `<i class="fas fa-calendar"></i>${year}`;
+                            yearGroup.appendChild(yearHeader);
+
+                            const albumsGrid = document.createElement('div');
+                            albumsGrid.className = 'album-grid';
+                            
+                            yearGroups[year].forEach(album => {
+                                const albumCard = createAlbumCard(album);
+                                albumsGrid.appendChild(albumCard);
+                            });
+                            
+                            yearGroup.appendChild(albumsGrid);
+                            albumsDiv.appendChild(yearGroup);
+                        });
+                    } else {
+                        // Regular grid view
+                        data.albums.forEach(album => {
+                            const albumCard = createAlbumCard(album);
+                            albumsDiv.appendChild(albumCard);
+                        });
+                    }
+                }
+            } catch (error) {
+                showError(error.message);
+            } finally {
+                hideLoading();
+            }
+        }
+
+        function changeSort(sortBy) {
+            currentSort = sortBy;
+            loadAlbums(1, sortBy);
+        }
+
+        function changePage(delta) {
+            const newPage = currentPage + delta;
+            if (newPage >= 1 && newPage <= totalPages) {
+                loadAlbums(newPage, currentSort);
+            }
+        }
+
+        // Initial load
+        loadAlbums();
+    </script>
 </body>
 </html>
+
