@@ -66,6 +66,7 @@ To use PayPal in production, you'll need to:
 ### Production Considerations
 
 For production deployment, consider:
+
 - Verifying payments with PayPal's API
 - Implementing webhook handling for payment notifications
 - Adding inventory management
@@ -76,6 +77,7 @@ For production deployment, consider:
 
 1. Create a PostgreSQL database named `albumdb`
 2. The application will automatically create the required tables:
+
    ```sql
    CREATE TABLE IF NOT EXISTS album_prices (
        album_id VARCHAR(255) PRIMARY KEY,
@@ -99,17 +101,20 @@ For production deployment, consider:
 ## Installation
 
 1. Clone the repository:
+
    ```bash
    git clone https://github.com/yourusername/goalbumapi.git
    cd goalbumapi
    ```
 
 2. Install dependencies:
+
    ```bash
    go mod download
    ```
 
 3. Build the application:
+
    ```bash
    go build
    ```
@@ -140,7 +145,7 @@ The application will be available at `http://localhost:3000`
   - Request Body:
     ```json
     {
-        "password": "your_admin_password"
+      "password": "your_admin_password"
     }
     ```
 - `POST /api/auth/logout` - Logout admin user
@@ -153,7 +158,7 @@ The application will be available at `http://localhost:3000`
   - Request Body:
     ```json
     {
-        "price": 29.99
+      "price": 29.99
     }
     ```
 
@@ -163,21 +168,21 @@ The application will be available at `http://localhost:3000`
   - Request Body:
     ```json
     {
-        "orderID": "PAYPAL_ORDER_ID",
-        "albumID": "ALBUM_ID",
-        "albumTitle": "Album Title",
-        "albumArtist": "Artist Name",
-        "amount": 29.99,
-        "payerID": "PAYPAL_PAYER_ID",
-        "paymentDetails": {}
+      "orderID": "PAYPAL_ORDER_ID",
+      "albumID": "ALBUM_ID",
+      "albumTitle": "Album Title",
+      "albumArtist": "Artist Name",
+      "amount": 29.99,
+      "payerID": "PAYPAL_PAYER_ID",
+      "paymentDetails": {}
     }
     ```
   - Response:
     ```json
     {
-        "success": true,
-        "message": "Payment processed successfully",
-        "orderID": "PAYPAL_ORDER_ID"
+      "success": true,
+      "message": "Payment processed successfully",
+      "orderID": "PAYPAL_ORDER_ID"
     }
     ```
 
@@ -215,6 +220,7 @@ The application includes three main views:
 ## Default Credentials
 
 If no `ADMIN_PASSWORD` environment variable is set, the application uses a default password:
+
 - **Default Password**: `admin123`
 
 **⚠️ Security Note**: Always set a strong `ADMIN_PASSWORD` environment variable in production.
@@ -240,6 +246,7 @@ goalbumapi/
 ### Building for Production
 
 1. Build the application:
+
    ```bash
    go build -o goalbumapi
    ```

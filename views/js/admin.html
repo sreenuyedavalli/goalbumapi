@@ -1,305 +1,346 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Album Collection Admin</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+    />
     <style>
-        body {
-            background-color: #f8f9fa;
-            padding-top: 20px;
-        }
-        .album-card {
-            transition: transform 0.3s ease;
-            margin-bottom: 20px;
-            height: 100%;
-        }
-        .album-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-        }
-        .album-cover {
-            height: 200px;
-            background-color: #e9ecef;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            overflow: hidden;
-            position: relative;
-        }
-        .album-cover img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-        .album-cover .placeholder {
-            font-size: 48px;
-            color: #6c757d;
-        }
-        .album-details {
-            padding: 15px;
-        }
-        .price-input {
-            width: 100px;
-        }
-        .loading {
-            display: none;
-            text-align: center;
-            padding: 20px;
-        }
-        .loading i {
-            font-size: 2em;
-            color: #007bff;
-        }
-        .error-message {
-            display: none;
-            margin: 20px 0;
-            padding: 15px;
-            border-radius: 5px;
-            background-color: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
-        }
-        .success-message {
-            display: none;
-            margin: 20px 0;
-            padding: 15px;
-            border-radius: 5px;
-            background-color: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
-        }
-        .nav-tabs {
-            margin-bottom: 20px;
-        }
-        .price-history {
-            font-size: 0.9em;
-            color: #6c757d;
-        }
-        .album-label {
-            color: #666;
-            font-size: 0.9em;
-            margin-bottom: 8px;
-        }
-        .album-label i {
-            margin-right: 5px;
-            color: #888;
-        }
-        .header-controls {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-        }
-        .logout-btn {
-            background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
-            border: none;
-            color: white;
-            padding: 8px 16px;
-            border-radius: 5px;
-            font-weight: 500;
-            transition: all 0.3s ease;
-        }
-        .logout-btn:hover {
-            background: linear-gradient(135deg, #c82333 0%, #bd2130 100%);
-            transform: translateY(-1px);
-            color: white;
-        }
+      body {
+        background-color: #f8f9fa;
+        padding-top: 20px;
+      }
+      .album-card {
+        transition: transform 0.3s ease;
+        margin-bottom: 20px;
+        height: 100%;
+      }
+      .album-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+      }
+      .album-cover {
+        height: 200px;
+        background-color: #e9ecef;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+        position: relative;
+      }
+      .album-cover img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+      .album-cover .placeholder {
+        font-size: 48px;
+        color: #6c757d;
+      }
+      .album-details {
+        padding: 15px;
+      }
+      .price-input {
+        width: 100px;
+      }
+      .loading {
+        display: none;
+        text-align: center;
+        padding: 20px;
+      }
+      .loading i {
+        font-size: 2em;
+        color: #007bff;
+      }
+      .error-message {
+        display: none;
+        margin: 20px 0;
+        padding: 15px;
+        border-radius: 5px;
+        background-color: #f8d7da;
+        color: #721c24;
+        border: 1px solid #f5c6cb;
+      }
+      .success-message {
+        display: none;
+        margin: 20px 0;
+        padding: 15px;
+        border-radius: 5px;
+        background-color: #d4edda;
+        color: #155724;
+        border: 1px solid #c3e6cb;
+      }
+      .nav-tabs {
+        margin-bottom: 20px;
+      }
+      .price-history {
+        font-size: 0.9em;
+        color: #6c757d;
+      }
+      .album-label {
+        color: #666;
+        font-size: 0.9em;
+        margin-bottom: 8px;
+      }
+      .album-label i {
+        margin-right: 5px;
+        color: #888;
+      }
+      .header-controls {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+      }
+      .logout-btn {
+        background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+        border: none;
+        color: white;
+        padding: 8px 16px;
+        border-radius: 5px;
+        font-weight: 500;
+        transition: all 0.3s ease;
+      }
+      .logout-btn:hover {
+        background: linear-gradient(135deg, #c82333 0%, #bd2130 100%);
+        transform: translateY(-1px);
+        color: white;
+      }
     </style>
-</head>
-<body>
+  </head>
+  <body>
     <div class="container mt-4">
-        <!-- Header with Logout -->
-        <div class="header-controls">
-            <div>
-                <h1>Album Price Management</h1>
-                <p class="text-muted">Set prices for your album collection</p>
+      <!-- Header with Logout -->
+      <div class="header-controls">
+        <div>
+          <h1>Album Price Management</h1>
+          <p class="text-muted">Set prices for your album collection</p>
+        </div>
+        <button class="btn logout-btn" onclick="logout()">
+          <i class="fas fa-sign-out-alt"></i> Logout
+        </button>
+      </div>
+
+      <!-- Loading Indicator -->
+      <div id="loading" class="loading" style="display: none">
+        <div class="spinner-border text-primary" role="status">
+          <span class="visually-hidden">Loading...</span>
+        </div>
+      </div>
+
+      <!-- Error Message -->
+      <div id="error" class="alert alert-danger" style="display: none"></div>
+
+      <!-- Success Message -->
+      <div id="success" class="alert alert-success" style="display: none"></div>
+
+      <!-- Sorting Controls -->
+      <div class="row mb-4">
+        <div class="col">
+          <div class="d-flex align-items-center">
+            <span class="me-2">Sort by:</span>
+            <div class="btn-group me-2" role="group" aria-label="Sort albums">
+              <button
+                type="button"
+                class="btn btn-outline-secondary"
+                onclick="sortAlbums('title')"
+              >
+                <i class="fas fa-sort-alpha-down"></i> Title
+              </button>
+              <button
+                type="button"
+                class="btn btn-outline-secondary"
+                onclick="sortAlbums('artist')"
+              >
+                <i class="fas fa-user"></i> Artist
+              </button>
+              <button
+                type="button"
+                class="btn btn-outline-secondary"
+                onclick="sortAlbums('year')"
+              >
+                <i class="fas fa-calendar"></i> Year
+              </button>
+              <button
+                type="button"
+                class="btn btn-outline-secondary"
+                onclick="sortAlbums('price')"
+              >
+                <i class="fas fa-dollar-sign"></i> Price
+              </button>
             </div>
-            <button class="btn logout-btn" onclick="logout()">
-                <i class="fas fa-sign-out-alt"></i> Logout
-            </button>
-        </div>
-
-        <!-- Loading Indicator -->
-        <div id="loading" class="loading" style="display: none;">
-            <div class="spinner-border text-primary" role="status">
-                <span class="visually-hidden">Loading...</span>
+            <div class="btn-group" role="group" aria-label="Sort direction">
+              <button
+                type="button"
+                class="btn btn-outline-secondary"
+                onclick="toggleSortDirection()"
+                id="sortDirectionBtn"
+              >
+                <i class="fas fa-sort-amount-down"></i> Descending
+              </button>
             </div>
+          </div>
         </div>
+      </div>
 
-        <!-- Error Message -->
-        <div id="error" class="alert alert-danger" style="display: none;"></div>
+      <!-- Albums Grid -->
+      <div id="albumsContainer" class="row"></div>
 
-        <!-- Success Message -->
-        <div id="success" class="alert alert-success" style="display: none;"></div>
+      <!-- Pagination -->
+      <div class="pagination mt-4">
+        <button
+          id="prevPage"
+          class="btn btn-outline-primary"
+          onclick="changePage(-1)"
+        >
+          Previous
+        </button>
+        <span class="pagination-info mx-3">
+          Page <span id="currentPage">1</span> of <span id="totalPages">1</span>
+        </span>
+        <button
+          id="nextPage"
+          class="btn btn-outline-primary"
+          onclick="changePage(1)"
+        >
+          Next
+        </button>
+      </div>
 
-        <!-- Sorting Controls -->
-        <div class="row mb-4">
-            <div class="col">
-                <div class="d-flex align-items-center">
-                    <span class="me-2">Sort by:</span>
-                    <div class="btn-group me-2" role="group" aria-label="Sort albums">
-                        <button type="button" class="btn btn-outline-secondary" onclick="sortAlbums('title')">
-                            <i class="fas fa-sort-alpha-down"></i> Title
-                        </button>
-                        <button type="button" class="btn btn-outline-secondary" onclick="sortAlbums('artist')">
-                            <i class="fas fa-user"></i> Artist
-                        </button>
-                        <button type="button" class="btn btn-outline-secondary" onclick="sortAlbums('year')">
-                            <i class="fas fa-calendar"></i> Year
-                        </button>
-                        <button type="button" class="btn btn-outline-secondary" onclick="sortAlbums('price')">
-                            <i class="fas fa-dollar-sign"></i> Price
-                        </button>
-                    </div>
-                    <div class="btn-group" role="group" aria-label="Sort direction">
-                        <button type="button" class="btn btn-outline-secondary" onclick="toggleSortDirection()" id="sortDirectionBtn">
-                            <i class="fas fa-sort-amount-down"></i> Descending
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Albums Grid -->
-        <div id="albumsContainer" class="row"></div>
-
-        <!-- Pagination -->
-        <div class="pagination mt-4">
-            <button id="prevPage" class="btn btn-outline-primary" onclick="changePage(-1)">Previous</button>
-            <span class="pagination-info mx-3">
-                Page <span id="currentPage">1</span> of <span id="totalPages">1</span>
-            </span>
-            <button id="nextPage" class="btn btn-outline-primary" onclick="changePage(1)">Next</button>
-        </div>
-
-        <!-- Navigation -->
-        <div class="mt-4">
-            <a href="/" class="btn btn-secondary">
-                <i class="fas fa-arrow-left"></i> Back to Public View
-            </a>
-        </div>
+      <!-- Navigation -->
+      <div class="mt-4">
+        <a href="/" class="btn btn-secondary">
+          <i class="fas fa-arrow-left"></i> Back to Public View
+        </a>
+      </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        let currentPage = 1;
-        let totalPages = 1;
-        const perPage = 12;
-        let currentSort = 'none';
-        let sortDirection = 'desc';
+      let currentPage = 1;
+      let totalPages = 1;
+      const perPage = 12;
+      let currentSort = "none";
+      let sortDirection = "desc";
 
-        // Check authentication on page load
-        document.addEventListener('DOMContentLoaded', async () => {
-            await checkAuth();
-        });
+      // Check authentication on page load
+      document.addEventListener("DOMContentLoaded", async () => {
+        await checkAuth();
+      });
 
-        async function checkAuth() {
-            try {
-                const response = await fetch('/api/auth/check');
-                if (!response.ok) {
-                    // Not authenticated, redirect to login
-                    window.location.href = '/login';
-                    return;
-                }
-                const data = await response.json();
-                if (!data.authenticated) {
-                    window.location.href = '/login';
-                    return;
-                }
-                // Authenticated, load albums
-                loadAlbums();
-            } catch (error) {
-                console.error('Auth check failed:', error);
-                window.location.href = '/login';
-            }
+      async function checkAuth() {
+        try {
+          const response = await fetch("/api/auth/check");
+          if (!response.ok) {
+            // Not authenticated, redirect to login
+            window.location.href = "/login";
+            return;
+          }
+          const data = await response.json();
+          if (!data.authenticated) {
+            window.location.href = "/login";
+            return;
+          }
+          // Authenticated, load albums
+          loadAlbums();
+        } catch (error) {
+          console.error("Auth check failed:", error);
+          window.location.href = "/login";
         }
+      }
 
-        async function logout() {
-            try {
-                const response = await fetch('/api/auth/logout', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    }
-                });
+      async function logout() {
+        try {
+          const response = await fetch("/api/auth/logout", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+          });
 
-                if (response.ok) {
-                    showSuccess('Logged out successfully. Redirecting...');
-                    setTimeout(() => {
-                        window.location.href = '/';
-                    }, 1000);
-                } else {
-                    showError('Logout failed. Please try again.');
-                }
-            } catch (error) {
-                console.error('Logout error:', error);
-                showError('Logout failed. Please try again.');
-            }
+          if (response.ok) {
+            showSuccess("Logged out successfully. Redirecting...");
+            setTimeout(() => {
+              window.location.href = "/";
+            }, 1000);
+          } else {
+            showError("Logout failed. Please try again.");
+          }
+        } catch (error) {
+          console.error("Logout error:", error);
+          showError("Logout failed. Please try again.");
         }
+      }
 
-        async function loadAlbums(page = 1, sortBy = null, keepPage = false) {
-            showLoading();
-            try {
-                console.log(`Loading page ${page}...`);
-                let url = `/albums?page=${page}&per_page=${perPage}`;
-                if (sortBy) {
-                    url += `&sort_by=${sortBy}&direction=${sortDirection}`;
-                    currentSort = sortBy;
-                }
-                const response = await fetch(url);
-                if (!response.ok) {
-                    if (response.status === 401) {
-                        // Unauthorized, redirect to login
-                        window.location.href = '/login';
-                        return;
-                    }
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                const data = await response.json();
-                console.log('Received data:', data);
-                
-                // Update pagination info
-                currentPage = data.pagination.current_page;
-                totalPages = data.pagination.total_pages;
-                document.getElementById('currentPage').textContent = currentPage;
-                document.getElementById('totalPages').textContent = totalPages;
-                
-                // Update pagination buttons
-                document.getElementById('prevPage').disabled = currentPage === 1;
-                document.getElementById('nextPage').disabled = currentPage === totalPages;
-
-                // Update sort buttons
-                updateSortButtons();
-
-                // Clear and populate albums
-                const albumsDiv = document.getElementById('albumsContainer');
-                albumsDiv.innerHTML = '';
-                
-                data.albums.forEach(album => {
-                    const card = createAlbumCard(album);
-                    albumsDiv.appendChild(card);
-                });
-            } catch (error) {
-                console.error('Error loading albums:', error);
-                showError('Failed to load albums. Please try again.');
-            } finally {
-                hideLoading();
+      async function loadAlbums(page = 1, sortBy = null, keepPage = false) {
+        showLoading();
+        try {
+          console.log(`Loading page ${page}...`);
+          let url = `/albums?page=${page}&per_page=${perPage}`;
+          if (sortBy) {
+            url += `&sort_by=${sortBy}&direction=${sortDirection}`;
+            currentSort = sortBy;
+          }
+          const response = await fetch(url);
+          if (!response.ok) {
+            if (response.status === 401) {
+              // Unauthorized, redirect to login
+              window.location.href = "/login";
+              return;
             }
-        }
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          const data = await response.json();
+          console.log("Received data:", data);
 
-        function createAlbumCard(album) {
-            const col = document.createElement('div');
-            col.className = 'col-md-4 col-lg-3';
-            
-            col.innerHTML = `
+          // Update pagination info
+          currentPage = data.pagination.current_page;
+          totalPages = data.pagination.total_pages;
+          document.getElementById("currentPage").textContent = currentPage;
+          document.getElementById("totalPages").textContent = totalPages;
+
+          // Update pagination buttons
+          document.getElementById("prevPage").disabled = currentPage === 1;
+          document.getElementById("nextPage").disabled =
+            currentPage === totalPages;
+
+          // Update sort buttons
+          updateSortButtons();
+
+          // Clear and populate albums
+          const albumsDiv = document.getElementById("albumsContainer");
+          albumsDiv.innerHTML = "";
+
+          data.albums.forEach((album) => {
+            const card = createAlbumCard(album);
+            albumsDiv.appendChild(card);
+          });
+        } catch (error) {
+          console.error("Error loading albums:", error);
+          showError("Failed to load albums. Please try again.");
+        } finally {
+          hideLoading();
+        }
+      }
+
+      function createAlbumCard(album) {
+        const col = document.createElement("div");
+        col.className = "col-md-4 col-lg-3";
+
+        col.innerHTML = `
                 <div class="card album-card">
                     <div class="album-cover">
-                        ${album.thumb ? 
-                            `<img src="${album.thumb}" alt="${album.title}">` :
-                            `<div class="placeholder"><i class="fas fa-music"></i></div>`
+                        ${
+                          album.thumb
+                            ? `<img src="${album.thumb}" alt="${album.title}">`
+                            : `<div class="placeholder"><i class="fas fa-music"></i></div>`
                         }
                     </div>
                     <div class="album-details">
@@ -325,104 +366,110 @@
                     </div>
                 </div>
             `;
-            
-            return col;
-        }
 
-        async function updatePrice(albumId, newPrice) {
-            showLoading();
-            try {
-                const response = await fetch(`/api/admin/albums/${albumId}/price`, {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ price: parseFloat(newPrice) })
-                });
+        return col;
+      }
 
-                if (!response.ok) {
-                    if (response.status === 401) {
-                        // Unauthorized, redirect to login
-                        window.location.href = '/login';
-                        return;
-                    }
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
+      async function updatePrice(albumId, newPrice) {
+        showLoading();
+        try {
+          const response = await fetch(`/api/admin/albums/${albumId}/price`, {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ price: parseFloat(newPrice) }),
+          });
 
-                showSuccess('Price updated successfully');
-            } catch (error) {
-                console.error('Error updating price:', error);
-                showError('Failed to update price. Please try again.');
-            } finally {
-                hideLoading();
+          if (!response.ok) {
+            if (response.status === 401) {
+              // Unauthorized, redirect to login
+              window.location.href = "/login";
+              return;
             }
-        }
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
 
-        function sortAlbums(sortBy) {
-            if (currentSort === sortBy) {
-                toggleSortDirection();
-            } else {
-                currentSort = sortBy;
-                sortDirection = 'desc';
-                updateSortDirectionButton();
-            }
-            loadAlbums(currentPage, currentSort, true);
+          showSuccess("Price updated successfully");
+        } catch (error) {
+          console.error("Error updating price:", error);
+          showError("Failed to update price. Please try again.");
+        } finally {
+          hideLoading();
         }
+      }
 
-        function toggleSortDirection() {
-            sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
-            updateSortDirectionButton();
-            loadAlbums(currentPage, currentSort, true);
+      function sortAlbums(sortBy) {
+        if (currentSort === sortBy) {
+          toggleSortDirection();
+        } else {
+          currentSort = sortBy;
+          sortDirection = "desc";
+          updateSortDirectionButton();
         }
+        loadAlbums(currentPage, currentSort, true);
+      }
 
-        function updateSortDirectionButton() {
-            const btn = document.getElementById('sortDirectionBtn');
-            const icon = btn.querySelector('i');
-            icon.className = sortDirection === 'asc' ? 'fas fa-sort-amount-up' : 'fas fa-sort-amount-down';
-            btn.innerHTML = icon.outerHTML + ' ' + (sortDirection === 'asc' ? 'Ascending' : 'Descending');
-        }
+      function toggleSortDirection() {
+        sortDirection = sortDirection === "asc" ? "desc" : "asc";
+        updateSortDirectionButton();
+        loadAlbums(currentPage, currentSort, true);
+      }
 
-        function updateSortButtons() {
-            document.querySelectorAll('.btn-group .btn').forEach(btn => {
-                btn.classList.remove('active');
-                if (btn.textContent.toLowerCase().includes(currentSort)) {
-                    btn.classList.add('active');
-                }
-            });
-        }
+      function updateSortDirectionButton() {
+        const btn = document.getElementById("sortDirectionBtn");
+        const icon = btn.querySelector("i");
+        icon.className =
+          sortDirection === "asc"
+            ? "fas fa-sort-amount-up"
+            : "fas fa-sort-amount-down";
+        btn.innerHTML =
+          icon.outerHTML +
+          " " +
+          (sortDirection === "asc" ? "Ascending" : "Descending");
+      }
 
-        function changePage(delta) {
-            const newPage = currentPage + delta;
-            if (newPage >= 1 && newPage <= totalPages) {
-                loadAlbums(newPage, currentSort);
-            }
-        }
+      function updateSortButtons() {
+        document.querySelectorAll(".btn-group .btn").forEach((btn) => {
+          btn.classList.remove("active");
+          if (btn.textContent.toLowerCase().includes(currentSort)) {
+            btn.classList.add("active");
+          }
+        });
+      }
 
-        function showLoading() {
-            document.getElementById('loading').style.display = 'block';
+      function changePage(delta) {
+        const newPage = currentPage + delta;
+        if (newPage >= 1 && newPage <= totalPages) {
+          loadAlbums(newPage, currentSort);
         }
+      }
 
-        function hideLoading() {
-            document.getElementById('loading').style.display = 'none';
-        }
+      function showLoading() {
+        document.getElementById("loading").style.display = "block";
+      }
 
-        function showError(message) {
-            const errorDiv = document.getElementById('error');
-            errorDiv.textContent = message;
-            errorDiv.style.display = 'block';
-            setTimeout(() => {
-                errorDiv.style.display = 'none';
-            }, 5000);
-        }
+      function hideLoading() {
+        document.getElementById("loading").style.display = "none";
+      }
 
-        function showSuccess(message) {
-            const successDiv = document.getElementById('success');
-            successDiv.textContent = message;
-            successDiv.style.display = 'block';
-            setTimeout(() => {
-                successDiv.style.display = 'none';
-            }, 3000);
-        }
+      function showError(message) {
+        const errorDiv = document.getElementById("error");
+        errorDiv.textContent = message;
+        errorDiv.style.display = "block";
+        setTimeout(() => {
+          errorDiv.style.display = "none";
+        }, 5000);
+      }
+
+      function showSuccess(message) {
+        const successDiv = document.getElementById("success");
+        successDiv.textContent = message;
+        successDiv.style.display = "block";
+        setTimeout(() => {
+          successDiv.style.display = "none";
+        }, 3000);
+      }
     </script>
-</body>
-</html> 
+  </body>
+</html>
