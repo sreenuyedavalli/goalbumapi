@@ -1,206 +1,256 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Album of the Month - Vinyl Monkey</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+    />
     <style>
-        body {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding-top: 20px;
-        }
-        .signup-container {
-            max-width: 600px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-        .signup-card {
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            overflow: hidden;
-        }
-        .signup-header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 30px;
-            text-align: center;
-        }
-        .signup-header h1 {
-            margin: 0;
-            font-size: 2.5em;
-            font-weight: 300;
-        }
-        .signup-header p {
-            margin: 10px 0 0 0;
-            opacity: 0.9;
-            font-size: 1.1em;
-        }
-        .signup-body {
-            padding: 40px;
-        }
-        .form-label {
-            font-weight: 600;
-            color: #333;
-            margin-bottom: 8px;
-        }
-        .form-control {
-            border: 2px solid #e9ecef;
-            border-radius: 8px;
-            padding: 12px 16px;
-            font-size: 1em;
-            transition: border-color 0.3s ease;
-        }
-        .form-control:focus {
-            border-color: #667eea;
-            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
-        }
-        .btn-primary {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border: none;
-            border-radius: 8px;
-            padding: 12px 30px;
-            font-size: 1.1em;
-            font-weight: 600;
-            transition: transform 0.2s ease;
-        }
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-        }
-        .alert {
-            border-radius: 8px;
-            border: none;
-            padding: 15px 20px;
-            margin-top: 20px;
-        }
-        .back-link {
-            text-align: center;
-            margin-top: 30px;
-        }
-        .back-link a {
-            color: white;
-            text-decoration: none;
-            font-weight: 500;
-            transition: opacity 0.3s ease;
-        }
-        .back-link a:hover {
-            opacity: 0.8;
-        }
-        .back-link i {
-            margin-right: 8px;
-        }
-        .benefits {
-            background: #f8f9fa;
-            border-radius: 8px;
-            padding: 20px;
-            margin-bottom: 30px;
-        }
-        .benefits h4 {
-            color: #333;
-            margin-bottom: 15px;
-        }
-        .benefits ul {
-            margin: 0;
-            padding-left: 20px;
-        }
-        .benefits li {
-            margin-bottom: 8px;
-            color: #666;
-        }
-        .benefits i {
-            color: #667eea;
-            margin-right: 8px;
-        }
+      body {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        padding-top: 20px;
+      }
+      .signup-container {
+        max-width: 600px;
+        margin: 0 auto;
+        padding: 20px;
+      }
+      .signup-card {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+      }
+      .signup-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 30px;
+        text-align: center;
+      }
+      .signup-header h1 {
+        margin: 0;
+        font-size: 2.5em;
+        font-weight: 300;
+      }
+      .signup-header p {
+        margin: 10px 0 0 0;
+        opacity: 0.9;
+        font-size: 1.1em;
+      }
+      .signup-body {
+        padding: 40px;
+      }
+      .form-label {
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 8px;
+      }
+      .form-control {
+        border: 2px solid #e9ecef;
+        border-radius: 8px;
+        padding: 12px 16px;
+        font-size: 1em;
+        transition: border-color 0.3s ease;
+      }
+      .form-control:focus {
+        border-color: #667eea;
+        box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+      }
+      .btn-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+        border-radius: 8px;
+        padding: 12px 30px;
+        font-size: 1.1em;
+        font-weight: 600;
+        transition: transform 0.2s ease;
+      }
+      .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+      }
+      .alert {
+        border-radius: 8px;
+        border: none;
+        padding: 15px 20px;
+        margin-top: 20px;
+      }
+      .back-link {
+        text-align: center;
+        margin-top: 30px;
+      }
+      .back-link a {
+        color: white;
+        text-decoration: none;
+        font-weight: 500;
+        transition: opacity 0.3s ease;
+      }
+      .back-link a:hover {
+        opacity: 0.8;
+      }
+      .back-link i {
+        margin-right: 8px;
+      }
+      .benefits {
+        background: #f8f9fa;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 30px;
+      }
+      .benefits h4 {
+        color: #333;
+        margin-bottom: 15px;
+      }
+      .benefits ul {
+        margin: 0;
+        padding-left: 20px;
+      }
+      .benefits li {
+        margin-bottom: 8px;
+        color: #666;
+      }
+      .benefits i {
+        color: #667eea;
+        margin-right: 8px;
+      }
     </style>
-</head>
-<body>
+  </head>
+  <body>
     <div class="container">
-        <div class="signup-container">
-            <div class="signup-card">
-                <div class="signup-header">
-                    <h1><i class="fas fa-music"></i> Album of the Month</h1>
-                    <p>Get personalized vinyl recommendations delivered to your inbox</p>
-                </div>
-                
-                <div class="signup-body">
-                    <div class="benefits">
-                        <h4><i class="fas fa-star"></i> What you'll get:</h4>
-                        <ul>
-                            <li><i class="fas fa-check"></i> Curated album recommendations based on your taste</li>
-                            <li><i class="fas fa-check"></i> Exclusive insights about rare and limited editions</li>
-                            <li><i class="fas fa-check"></i> Early access to new releases and pre-orders</li>
-                            <li><i class="fas fa-check"></i> Monthly vinyl collecting tips and tricks</li>
-                        </ul>
-                    </div>
+      <div class="signup-container">
+        <div class="signup-card">
+          <div class="signup-header">
+            <h1><i class="fas fa-music"></i> Album of the Month</h1>
+            <p>
+              Get personalized vinyl recommendations delivered to your inbox
+            </p>
+          </div>
 
-                    <form id="albumOfMonthForm">
-                        <div class="mb-3">
-                            <label for="signupName" class="form-label">Full Name</label>
-                            <input type="text" class="form-control" id="signupName" name="name" required placeholder="Enter your full name">
-                        </div>
-                        <div class="mb-3">
-                            <label for="signupEmail" class="form-label">Email Address</label>
-                            <input type="email" class="form-control" id="signupEmail" name="email" required placeholder="Enter your email address">
-                        </div>
-                        <button type="submit" class="btn btn-primary w-100">
-                            <i class="fas fa-paper-plane"></i> Sign Up for Album of the Month
-                        </button>
-                    </form>
-                    
-                    <div id="signupSuccess" class="alert alert-success d-none" role="alert">
-                        Thank you for signing up! You'll receive our Album of the Month recommendations soon.
-                    </div>
-                </div>
+          <div class="signup-body">
+            <div class="benefits">
+              <h4><i class="fas fa-star"></i> What you'll get:</h4>
+              <ul>
+                <li>
+                  <i class="fas fa-check"></i> Curated album recommendations
+                  based on your taste
+                </li>
+                <li>
+                  <i class="fas fa-check"></i> Exclusive insights about rare and
+                  limited editions
+                </li>
+                <li>
+                  <i class="fas fa-check"></i> Early access to new releases and
+                  pre-orders
+                </li>
+                <li>
+                  <i class="fas fa-check"></i> Monthly vinyl collecting tips and
+                  tricks
+                </li>
+              </ul>
             </div>
-            
-            <div class="back-link">
-                <a href="/"><i class="fas fa-arrow-left"></i>Back to Album Collection</a>
+
+            <form id="albumOfMonthForm">
+              <div class="mb-3">
+                <label for="signupName" class="form-label">Full Name</label>
+                <input
+                  type="text"
+                  class="form-control"
+                  id="signupName"
+                  name="name"
+                  required
+                  placeholder="Enter your full name"
+                />
+              </div>
+              <div class="mb-3">
+                <label for="signupEmail" class="form-label"
+                  >Email Address</label
+                >
+                <input
+                  type="email"
+                  class="form-control"
+                  id="signupEmail"
+                  name="email"
+                  required
+                  placeholder="Enter your email address"
+                />
+              </div>
+              <button type="submit" class="btn btn-primary w-100">
+                <i class="fas fa-paper-plane"></i> Sign Up for Album of the
+                Month
+              </button>
+            </form>
+
+            <div
+              id="signupSuccess"
+              class="alert alert-success d-none"
+              role="alert"
+            >
+              Thank you for signing up! You'll receive our Album of the Month
+              recommendations soon.
             </div>
+          </div>
         </div>
+
+        <div class="back-link">
+          <a href="/"
+            ><i class="fas fa-arrow-left"></i>Back to Album Collection</a
+          >
+        </div>
+      </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Album of the Month sign-up form handler
-        document.getElementById('albumOfMonthForm').addEventListener('submit', async function(e) {
-            e.preventDefault();
-            const name = document.getElementById('signupName').value.trim();
-            const email = document.getElementById('signupEmail').value.trim();
-            const successDiv = document.getElementById('signupSuccess');
-            successDiv.classList.add('d-none');
-            successDiv.classList.remove('alert-danger');
-            successDiv.classList.add('alert-success');
-            successDiv.textContent = '';
+      // Album of the Month sign-up form handler
+      document
+        .getElementById("albumOfMonthForm")
+        .addEventListener("submit", async function (e) {
+          e.preventDefault();
+          const name = document.getElementById("signupName").value.trim();
+          const email = document.getElementById("signupEmail").value.trim();
+          const successDiv = document.getElementById("signupSuccess");
+          successDiv.classList.add("d-none");
+          successDiv.classList.remove("alert-danger");
+          successDiv.classList.add("alert-success");
+          successDiv.textContent = "";
 
-            try {
-                const res = await fetch('/api/album-of-month-signup', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name, email })
-                });
-                const data = await res.json();
-                if (res.ok) {
-                    successDiv.textContent = "Thank you for signing up! You'll receive our Album of the Month recommendations soon.";
-                    successDiv.classList.remove('d-none');
-                    document.getElementById('albumOfMonthForm').reset();
-                    setTimeout(() => { successDiv.classList.add('d-none'); }, 5000);
-                } else {
-                    successDiv.textContent = data.error || 'Sign-up failed. Please try again.';
-                    successDiv.classList.remove('d-none');
-                    successDiv.classList.remove('alert-success');
-                    successDiv.classList.add('alert-danger');
-                }
-            } catch (err) {
-                successDiv.textContent = 'Network error. Please try again.';
-                successDiv.classList.remove('d-none');
-                successDiv.classList.remove('alert-success');
-                successDiv.classList.add('alert-danger');
+          try {
+            const res = await fetch("/api/album-of-month-signup", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ name, email }),
+            });
+            const data = await res.json();
+            if (res.ok) {
+              successDiv.textContent =
+                "Thank you for signing up! You'll receive our Album of the Month recommendations soon.";
+              successDiv.classList.remove("d-none");
+              document.getElementById("albumOfMonthForm").reset();
+              setTimeout(() => {
+                successDiv.classList.add("d-none");
+              }, 5000);
+            } else {
+              successDiv.textContent =
+                data.error || "Sign-up failed. Please try again.";
+              successDiv.classList.remove("d-none");
+              successDiv.classList.remove("alert-success");
+              successDiv.classList.add("alert-danger");
             }
+          } catch (err) {
+            successDiv.textContent = "Network error. Please try again.";
+            successDiv.classList.remove("d-none");
+            successDiv.classList.remove("alert-success");
+            successDiv.classList.add("alert-danger");
+          }
         });
     </script>
-</body>
-</html> 
+  </body>
+</html>
