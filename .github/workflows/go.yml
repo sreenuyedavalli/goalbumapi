@@ -72,9 +72,13 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     
+    - name: Get git hash
+      id: git-hash
+      run: echo "hash=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+    
     - name: Build Docker image
-      run: docker build -t goalbumapi:latest .
+      run: docker build -t goalbumapi:${{ steps.git-hash.outputs.hash }} .
     
     - name: Test Docker image
       run: |
-        docker run --rm goalbumapi:latest --help || true
+        docker run --rm goalbumapi:${{ steps.git-hash.outputs.hash }} --help || true
